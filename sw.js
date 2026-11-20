@@ -1,5 +1,5 @@
 'use strict';
-const CACHE='ceen2-v48';
+const CACHE='ceen2-v49';
 const PRECACHE=['./','./index.html','./manifest.webmanifest','./global-catalog.json','./recipes-global.json','./icons/icon-192.png','./icons/icon-512.png'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(PRECACHE)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('ceen2-')&&key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim()));});
