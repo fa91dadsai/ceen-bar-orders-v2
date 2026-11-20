@@ -1,6 +1,6 @@
 {
-  "name": "CEEN Bar Orders 2",
-  "short_name": "CEEN 2",
+  "name": "Barline Bar Orders",
+  "short_name": "Barline",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
