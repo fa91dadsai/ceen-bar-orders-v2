@@ -1,0 +1,72 @@
+/* Checklists v1 — uses the app's colour tokens, so light and dark themes follow automatically. */
+.cl-home-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.cl-home-top h2{min-width:0;overflow-wrap:anywhere}
+.cl-badge{flex:none;background:var(--danger);color:var(--paper);border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700;white-space:nowrap}
+.cl-home .cl-issues{margin:12px 0 0}
+.cl-types{display:grid;gap:10px;margin:8px 0 18px}
+.cl-type{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:12px;border:1px solid var(--line);border-radius:16px;background:var(--paper);margin-bottom:10px;min-width:0}
+.cl-type>div:first-child{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 180px}
+.cl-type small{color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+.cl-type-btns{display:flex;flex-wrap:wrap;gap:8px;min-width:0}
+.cl-type-btns button{min-height:44px;padding:8px 12px;font-size:13px}
+.cl-type-btns .primary{flex:0 1 auto;min-height:44px}
+.cl-ack{border-color:var(--gold)}
+.cl-pill{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;background:var(--soft);color:var(--green);font-size:11px;font-weight:700;vertical-align:middle}
+.cl-issues{display:grid;gap:8px;margin-bottom:18px}
+.cl-issue{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--danger);border-radius:14px;background:var(--danger-soft);min-width:0}
+.cl-issue-txt{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}
+.cl-issue-txt b{overflow-wrap:anywhere}
+.cl-issue-txt small{color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+.cl-issue button{flex:none;min-height:44px;padding:8px 12px;font-size:13px}
+.cl-more{width:100%;min-height:44px}
+.cl-bar{height:6px;border-radius:999px;background:var(--line);overflow:hidden;margin:4px 0 12px}
+.cl-bar span{display:block;height:100%;background:var(--action);transition:width .2s}
+.cl-status{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:12px;border-radius:14px;background:var(--soft);margin-bottom:12px}
+.cl-status p{margin:0;font-size:14px;min-width:0;overflow-wrap:anywhere}
+.cl-next{position:sticky;top:calc(var(--hdr-h,74px) + 60px);z-index:4;background:var(--bg);padding:4px 0 8px;margin-bottom:6px}
+.cl-next>small{display:block;font-size:11px;letter-spacing:.8px;text-transform:uppercase;color:var(--gold);font-weight:700;margin-bottom:4px}
+.cl-next .cl-row{border-color:var(--action)}
+.cl-sec{border:1px solid var(--line);border-radius:16px;background:var(--paper);margin-bottom:10px;overflow:hidden;contain:content}
+.cl-sec>summary{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:48px;padding:8px 14px;cursor:pointer;list-style:none}
+.cl-sec>summary::-webkit-details-marker{display:none}
+.cl-sec>summary::after{content:'▾';color:var(--muted);margin-left:6px}
+.cl-sec:not([open])>summary::after{content:'▸'}
+.cl-sec>summary span{margin-left:auto;color:var(--muted);font-size:13px}
+.cl-sec .cl-row{border-width:1px 0 0;border-radius:0}
+.cl-row{display:flex;align-items:stretch;gap:0;border:1px solid var(--line);border-radius:14px;background:var(--paper);min-width:0}
+.cl-main{display:flex;align-items:center;gap:12px;flex:1;min-width:0;min-height:56px;padding:8px 12px;border:0;border-radius:0;background:var(--clear);text-align:left;color:var(--ink)}
+.cl-box{flex:none;display:grid;place-items:center;width:28px;height:28px;border:2px solid var(--control);border-radius:8px;font-weight:700;font-size:15px;color:var(--on-action)}
+.is-done .cl-box{background:var(--action);border-color:var(--action)}
+.is-issue .cl-box{background:var(--danger);border-color:var(--danger);color:var(--paper)}
+.is-done .cl-label b{color:var(--muted);text-decoration:line-through}
+.cl-label{display:flex;flex-direction:column;gap:2px;min-width:0}
+.cl-label b{font-size:15px;font-weight:600;overflow-wrap:anywhere}
+.cl-label small{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.is-issue .cl-label small{color:var(--danger)}
+.cl-label .cl-opt{font-style:italic}
+.cl-link,.cl-flag{flex:none;min-width:44px;min-height:44px;margin:6px 6px 6px 0;padding:0 8px;border:1px solid var(--line);border-radius:10px;background:var(--raised);font-size:12px;align-self:center}
+.cl-flag{color:var(--danger);font-size:18px;font-weight:700}
+.cl-hist-list{display:grid;gap:8px}
+.cl-date{margin-top:14px}
+.cl-hist{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;min-height:56px;padding:10px 12px;text-align:left;border:1px solid var(--line);border-radius:14px;background:var(--paper)}
+.cl-hist small{color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+.cl-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:-4px}
+.cl-list{margin:4px 0 12px 18px;padding:0}
+.cl-list li{overflow-wrap:anywhere}
+.cl-pick{display:flex;flex-direction:column;align-items:flex-start;width:100%;min-height:48px;margin-bottom:6px;padding:8px 12px;text-align:left}
+.cl-pick small{color:var(--muted);font-size:12px}
+.cl-stock{display:flex;flex-direction:column;gap:10px}
+.cl-stock small{color:var(--muted);font-size:13px}
+.cl-addrow{display:grid;grid-template-columns:minmax(0,80px) minmax(0,1fr);gap:8px}
+.cl-addrow input{min-height:48px;text-align:center;box-sizing:border-box;width:100%}
+#clDialog textarea,#clDialog input:not([type=checkbox]){width:100%;box-sizing:border-box}
+.cl-ed-sec{border:1px solid var(--line);border-radius:16px;background:var(--paper);padding:12px;margin:0 0 12px;min-width:0}
+.cl-ed-label{width:100%;box-sizing:border-box;min-height:44px;font-weight:600}
+.cl-ed-sec>.cl-type-btns{margin:8px 0}
+.cl-ed-task{border-top:1px solid var(--line);padding:10px 0;display:grid;gap:8px;min-width:0}
+.cl-ed-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.cl-ed-grid select,.cl-ed-grid input{width:100%;min-width:0;box-sizing:border-box;min-height:44px}
+.cl-ed-mini{display:flex;flex-direction:column;gap:2px;font-size:11px;color:var(--muted);min-width:0}
+.cl-ed-check{flex-direction:row;align-items:center;gap:6px;font-size:13px;color:var(--ink)}
+.cl-ed-check input{width:22px;height:22px;min-height:0}
+@media (max-width:360px){.cl-ed-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cl-type-btns button{padding:8px 10px}}
