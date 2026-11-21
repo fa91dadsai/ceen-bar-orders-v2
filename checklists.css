@@ -70,3 +70,10 @@
 .cl-ed-check{flex-direction:row;align-items:center;gap:6px;font-size:13px;color:var(--ink)}
 .cl-ed-check input{width:22px;height:22px;min-height:0}
 @media (max-width:360px){.cl-ed-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cl-type-btns button{padding:8px 10px}}
+.cl-ed-note{margin:0 0 12px;color:var(--muted);font-size:13px}
+.cl-lib-list{margin-top:4px}
+.cl-lib-grp>summary{position:sticky;top:0;background:var(--paper);z-index:1}
+.cl-lib-row{flex-direction:row;align-items:center;gap:12px;margin:0;border:0;border-top:1px solid var(--line);border-radius:0;background:var(--clear);color:var(--ink)}
+.cl-lib-row:disabled{opacity:.75}
+.cl-lib-row.is-done .cl-box{background:var(--action);border-color:var(--action)}
+.cl-lib-row:not(.is-done) .cl-box{color:var(--green)}

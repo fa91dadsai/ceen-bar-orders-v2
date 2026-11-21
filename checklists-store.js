@@ -7,7 +7,7 @@ const CL_DB_VERSION = 1;
 const CL = {
   ready: false, memoryOnly: false, warned: false, idb: null,
   runs: [], entries: new Map(), rev: 0, issueCache: null,
-  unlocked: false, editDraft: null, collapsed: new Set(), stock: null
+  editDraft: null, editKey: null, editSection: null, lib: null, collapsed: new Set(), stock: null
 };
 
 const clNewId = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : uid('cl'));
@@ -182,10 +182,27 @@ function clOpenIssues() {
   return CL.issueCache;
 }
 
-function clStartRun(type, staffName) {
-  const template = clActiveTemplate(type), now = clNow();
+/* Hub cards: the three built-ins (their active template), then live custom checklists. */
+function clCards() {
+  const builtIn = CL_TYPES.map(type => ({ key: type, type, template: clActiveTemplate(type), title: CL_TYPE_NAMES[type] }));
+  const custom = clState().templates.filter(t => t.type === 'custom' && !t.deletedAt)
+    .map(t => ({ key: t.id, type: 'custom', template: t, title: t.name }));
+  return [...builtIn, ...custom];
+}
+
+const clCardByKey = key => clCards().find(card => card.key === key) || null;
+const clRunOfCard = (run, card) => (card.type === 'custom' ? run.templateId === card.template.id : run.type === card.type);
+const clRunTitle = run => CL_TYPE_NAMES[run.type] || run.snapshot.name;
+
+function clCardTodayRun(card) {
+  const today = clToday();
+  return CL.runs.filter(r => r.businessDate === today && clRunOfCard(r, card)).sort((a, b) => (a.startedAt < b.startedAt ? 1 : -1))[0] || null;
+}
+
+function clStartRun(template, staffName) {
+  const now = clNow();
   const run = clCleanRun({
-    id: clNewId(), templateId: template.id, templateVersion: template.version, type,
+    id: clNewId(), templateId: template.id, templateVersion: template.version, type: template.type,
     snapshot: { name: template.name, sections: clone(template.sections), tasks: clone(template.tasks) },
     businessDate: clToday(), startedAt: now, completedAt: null, staffName,
     deviceId: clState().deviceId, ack: null, orderAdds: {}

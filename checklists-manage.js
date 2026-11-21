@@ -1,98 +1,46 @@
 'use strict';
-/* Checklists v1 — manager area: 4-digit PIN (salted SHA-256), templates and settings.
-   Loaded last of the checklist files, so it also starts the feature (clInit at the bottom). */
-const CL_PIN_RE = /^\d{4}$/;
-const clHex = bytes => [...new Uint8Array(bytes)].map(b => b.toString(16).padStart(2, '0')).join('');
+/* Checklists v1 — editing: open a checklist's tasks straight from its card, create custom checklists,
+   day-cutoff setting. Single-user app: no PIN. Loaded last of the checklist files, so it starts the feature. */
+const CL_APPLY_NOTE = 'Changes apply the next time you start this checklist.';
 
-async function clHashPin(pin, salt) {
-  if (!window.crypto || !crypto.subtle) throw new Error('This browser cannot protect a PIN here. Open Barline from its https link.');
-  return clHex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(salt + ':' + pin)));
+function clLiveTemplateCount() {
+  return clState().templates.filter(t => !t.deletedAt).length;
 }
 
-const clPinInput = (id, label) => clField(id, label, `<input id="${id}" type="password" inputmode="numeric" maxlength="4" autocomplete="off" pattern="[0-9]*">`);
-
-function clPinDialog() {
-  if (!clState().pin) {
-    clDialog('Set manager PIN', '<p class="hint">Choose 4 digits. Managers use it to change checklist templates.</p>' + clPinInput('clPin1', 'New PIN') + clPinInput('clPin2', 'Repeat PIN'),
-      `${clCancel}<button type="button" class="primary" data-clact="pinset">Set PIN</button>`);
-    return;
-  }
-  clDialog('Manager PIN', clPinInput('clPin1', 'PIN'),
-    `<button type="button" data-clact="pinforgot">Forgot PIN</button><button type="button" class="primary" data-clact="pincheck">Unlock</button>`);
+function clSettingsDialog() {
+  clDialog('Checklist settings', clField('clCutoff', 'Business day starts at', `<input id="clCutoff" type="time" value="${esc(clState().settings.dayCutoff)}">`) +
+    '<p class="hint">Work before this time counts for the previous day (a 02:00 close belongs to yesterday).</p>',
+    `${clCancel}<button type="button" class="primary" data-clact="cutoff">Save</button>`);
 }
 
-async function clPinSet() {
-  const pin = $('clPin1').value, again = $('clPin2').value;
-  if (!CL_PIN_RE.test(pin)) return clError('Use exactly 4 digits.');
-  if (pin !== again) return clError('The two PINs do not match.');
-  try {
-    const salt = clHex(crypto.getRandomValues(new Uint8Array(16)));
-    clState().pin = { hash: await clHashPin(pin, salt), salt };
-  } catch (error) {
-    return clError(error.message);
-  }
+function clSaveCutoff() {
+  const value = $('clCutoff').value;
+  if (!CL_CUTOFF_RE.test(value)) return clError('Pick a time such as 06:00.');
+  clState().settings.dayCutoff = value;
   if (!clSave()) return;
-  CL.unlocked = true;
   clCloseDialog();
-  notify('Manager PIN set.');
-  go('checklistsmanage');
+  notify('Business day now starts at ' + value + '.');
+  clRefresh();
 }
 
-async function clPinCheck() {
-  const pin = $('clPin1').value, stored = clState().pin;
-  if (!stored) return clPinDialog();
-  try {
-    if (!CL_PIN_RE.test(pin) || await clHashPin(pin, stored.salt) !== stored.hash) return clError('Wrong PIN.');
-  } catch (error) {
-    return clError(error.message);
-  }
-  CL.unlocked = true;
-  clCloseDialog();
-  go('checklistsmanage');
+function clNewListDialog() {
+  clDialog('New checklist', clField('clListName', 'Name', `<input id="clListName" maxlength="${CL_LIMITS.customName}" autocomplete="off" dir="auto" placeholder="e.g. Deep clean">`),
+    `${clCancel}<button type="button" class="primary" data-clact="newlistgo">Create</button>`);
 }
 
-function clPinForgot() {
-  clDialog('Reset manager PIN', '<p class="hint">Type the restaurant name exactly as it appears in your profile. Templates stay as they are.</p>' +
-    clField('clRest', 'Restaurant name', '<input id="clRest" autocomplete="off" dir="auto">'),
-    `${clCancel}<button type="button" class="primary" data-clact="pinreset">Reset PIN</button>`);
-}
-
-function clPinReset() {
-  const name = rname();
-  if (!name) return clError('Set the restaurant name in Edit profile first.');
-  if (norm($('clRest').value) !== norm(name)) return clError('That is not the restaurant name.');
-  clState().pin = null;
+function clNewListCreate() {
+  const name = clStr($('clListName').value, CL_LIMITS.customName + 1);
+  if (name.length < 2 || name.length > CL_LIMITS.customName) return clError(`Use 2 to ${CL_LIMITS.customName} characters.`);
+  if (clLiveTemplateCount() >= CL_LIMITS.templates) return clError('Delete a checklist before adding another.');
+  if (!clCanSave()) return clSave();
+  const template = clCleanTemplate({
+    id: clNewId(), type: 'custom', name, version: 1, updatedAt: clNow(), deletedAt: null,
+    sections: [{ id: clNewId(), name: 'Tasks', order: 0 }], tasks: []
+  });
+  clState().templates.push(template);
   if (!clSave()) return;
-  clPinDialog();
-}
-
-function clManageOpen() {
-  if (!clCanSave()) return notify('Saved data could not be loaded. Restore a backup before changing templates.');
-  if (CL.unlocked) return go('checklistsmanage');
-  clPinDialog();
-}
-
-function clTemplateRow(template, type) {
-  const inUse = clState().settings.active[type] === template.id, isStarter = clIsStarterId(template.id), id = esc(template.id);
-  const info = `v${template.version} · ${clPlural(template.tasks.length, 'task')}${isStarter ? ' · read-only' : ' · updated ' + clDateTime(template.updatedAt)}`;
-  const buttons = (isStarter ? '' : `<button type="button" data-go="checklistsedit/${id}">Edit</button>`) +
-    `<button type="button" data-clact="tpldup" data-tpl="${id}">${isStarter ? 'Duplicate & edit' : 'Duplicate'}</button>` +
-    (inUse ? '' : `<button type="button" data-clact="tpluse" data-tpl="${id}">Use</button>`) +
-    (isStarter ? '' : `<button type="button" class="danger-text" data-clact="tpldel" data-tpl="${id}">Delete</button>`);
-  return `<article class="cl-type"><div><b>${esc(template.name)}${inUse ? ' <span class="cl-pill">In use</span>' : ''}</b><small>${esc(info)}</small></div><div class="cl-type-btns">${buttons}</div></article>`;
-}
-
-function clManagePage() {
-  if (!CL.unlocked) {
-    return `${rcvBar('checklists', 'Checklist templates', 'Manager')}<div class="empty"><p>Managers only.</p><button type="button" class="primary" data-clact="manage">Enter PIN</button></div>`;
-  }
-  const groups = CL_TYPES.map(type => `<h2 class="home-h">${CL_TYPE_NAMES[type]}</h2>` +
-    clTemplates().filter(t => t.type === type).map(t => clTemplateRow(t, type)).join('')).join('');
-  return `${rcvBar('checklists', 'Checklist templates', 'Manager')}${groups}<h2 class="home-h">Settings</h2><div class="cl-type"><div>` +
-    clField('clCutoff', 'Business day starts at', `<input id="clCutoff" type="time" value="${esc(clState().settings.dayCutoff)}">`) +
-    '<small>Work before this time counts for the previous day (a 02:00 close belongs to yesterday).</small></div>' +
-    '<div class="cl-type-btns"><button type="button" class="primary" data-clact="cutoff">Save</button></div></div>' +
-    '<div class="toolbar-row"><button type="button" data-clact="lock">Lock manager area</button></div>';
+  clCloseDialog();
+  go('checklistsedit/' + template.id);
 }
 
 function clEditLimits(task) {
@@ -120,15 +68,31 @@ function clEditSection(group) {
     group.tasks.map(clEditTask).join('') + `<button type="button" class="ghost" data-clact="edaddtask" data-sec="${id}">+ Add task</button></fieldset>`;
 }
 
-function clEditPage(id) {
-  const source = clState().templates.find(t => t.id === id && !t.deletedAt);
-  if (!CL.unlocked || !source) return clManagePage();
-  if (!CL.editDraft || CL.editDraft.id !== id) CL.editDraft = clone(source);
-  const draft = CL.editDraft;
-  footer('<button type="button" data-clact="edcancel">Cancel</button><button type="button" class="primary" data-clact="edsave">Save template</button>');
-  return `${rcvBar('checklistsmanage', 'Edit template', `${CL_TYPE_NAMES[draft.type]} · v${source.version}`)}` +
-    clField('clTplName', 'Template name', `<input id="clTplName" data-cled="name" value="${esc(draft.name)}" maxlength="${CL_LIMITS.name}" dir="auto">`) +
-    clOrdered(draft).map(clEditSection).join('') + '<button type="button" class="ghost" data-clact="edaddsec">+ Add section</button>';
+/* Built-ins whose active template is a starter are edited as an unsaved copy; the first Save stores it. */
+function clEditDraftFor(key, card) {
+  if (CL.editDraft && CL.editKey === key) return CL.editDraft;
+  CL.editKey = key;
+  CL.editSection = null;
+  CL.editDraft = clIsStarterId(card.template.id) ? clDuplicate(card.template, clNewId, clNow()) : clone(card.template);
+  return CL.editDraft;
+}
+
+function clEditDanger(card) {
+  if (card.type === 'custom') return '<button type="button" class="danger-text" data-clact="eddelete">Delete checklist</button>';
+  if (clIsStarterId(card.template.id)) return '';
+  return '<button type="button" class="danger-text" data-clact="edreset">Reset to default</button>';
+}
+
+function clEditPage(key) {
+  const card = clCardByKey(key);
+  if (!card) return clHubPage();
+  const draft = clEditDraftFor(key, card), maxName = card.type === 'custom' ? CL_LIMITS.customName : CL_LIMITS.name;
+  footer('<button type="button" data-clact="edcancel">Cancel</button><button type="button" class="primary" data-clact="edsave">Save</button>');
+  return `${rcvBar('checklists', 'Edit ' + card.title, '')}<p class="hint cl-ed-note">${CL_APPLY_NOTE}</p>` +
+    clField('clTplName', 'Checklist name', `<input id="clTplName" data-cled="name" value="${esc(draft.name)}" maxlength="${maxName}" dir="auto">`) +
+    clOrdered(draft).map(clEditSection).join('') +
+    '<div class="toolbar-row"><button type="button" class="ghost" data-clact="edaddsec">+ Add section</button><button type="button" data-clact="libopen">+ Add from library</button></div>' +
+    `<div class="toolbar-row">${clEditDanger(card)}</div>`;
 }
 
 /* Reorder by swapping `order` with the neighbour; orders are renumbered first so they stay unique. */
@@ -152,7 +116,7 @@ function clEditInput(el) {
 }
 
 function clEditProblem(draft) {
-  if (!clStr(draft.name, CL_LIMITS.name)) return 'Give the template a name.';
+  if (clStr(draft.name, CL_LIMITS.name).length < 2) return 'Give the checklist a name (at least 2 characters).';
   if (!draft.tasks.length) return 'Add at least one task.';
   if (draft.tasks.some(t => !clStr(t.label, CL_LIMITS.label))) return 'Every task needs a name.';
   if (draft.tasks.some(t => t.kind === 'number' && [t.min, t.max].some(v => v !== null && !Number.isFinite(v)))) return 'Min and max must be numbers.';
@@ -160,17 +124,39 @@ function clEditProblem(draft) {
 }
 
 function clEditSave() {
-  const draft = CL.editDraft, list = clState().templates, index = list.findIndex(t => draft && t.id === draft.id);
-  if (index < 0) return;
+  const draft = CL.editDraft;
+  if (!draft) return;
+  if (!clCanSave()) return clSave();
   const problem = clEditProblem(draft);
   if (problem) return notify(problem);
-  const saved = clCleanTemplate({ ...draft, version: list[index].version + 1, updatedAt: clNow() });
-  if (!saved) return notify('This template could not be saved.');
-  list[index] = saved;
+  const list = clState().templates, index = list.findIndex(t => t.id === draft.id);
+  if (index < 0 && clLiveTemplateCount() >= CL_LIMITS.templates) return notify('Delete a checklist before adding another.');
+  const saved = clCleanTemplate({ ...draft, version: index < 0 ? 1 : list[index].version + 1, updatedAt: clNow() });
+  if (!saved) return notify('This checklist could not be saved.');
+  if (index < 0) list.push(saved);
+  else list[index] = saved;
+  if (saved.type !== 'custom') clState().settings.active[saved.type] = saved.id;
+  clState().settings = clCleanSettings(clState().settings, list);
   CL.editDraft = null;
   if (!clSave()) return;
-  notify(`Saved as v${saved.version}. Checklists already started keep their version.`);
-  go('checklistsmanage');
+  notify('Saved. ' + CL_APPLY_NOTE);
+  go('checklists');
+}
+
+/* Reset (built-in) and Delete (custom) are soft deletes: past runs keep their own snapshot. */
+function clEditRemove(ds) {
+  const card = clCardByKey(CL.editKey), isReset = ds.clact === 'edreset';
+  if (!card || clIsStarterId(card.template.id)) return;
+  const question = isReset ? `Reset ${card.title} to the default tasks? Your changes are removed; past checklists keep theirs.`
+    : `Delete ${card.title}? Past checklists stay in History.`;
+  if (!confirm(question)) return;
+  if (!clCanSave()) return clSave();
+  card.template.deletedAt = clNow();
+  clState().settings = clCleanSettings(clState().settings, clState().templates);
+  CL.editDraft = null;
+  if (!clSave()) return;
+  notify(isReset ? `${card.title} uses the default tasks again.` : `${card.title} deleted.`);
+  go('checklists');
 }
 
 function clEditStructure(ds) {
@@ -178,7 +164,8 @@ function clEditStructure(ds) {
   if (!draft) return;
   const action = ds.clact, dir = Number(ds.dir);
   if (action === 'edaddsec') draft.sections.push({ id: clNewId(), name: 'New section', order: draft.sections.length });
-  if (action === 'edaddtask') draft.tasks.push({ id: clNewId(), sectionId: ds.sec, label: 'New task', kind: 'check', unit: '', min: null, max: null, required: true, order: draft.tasks.length, link: '' });
+  if (action === 'edaddtask') draft.tasks.push({ id: clNewId(), sectionId: ds.sec, label: 'New task', kind: 'check', unit: '', min: null, max: null, required: true, order: draft.tasks.length, link: '', sourceId: '' });
+  if (action === 'edaddtask') CL.editSection = ds.sec;
   if (action === 'eddeltask') draft.tasks = draft.tasks.filter(t => t.id !== ds.task);
   if (action === 'eddelsec') {
     draft.sections = draft.sections.filter(s => s.id !== ds.sec);
@@ -192,46 +179,12 @@ function clEditStructure(ds) {
   clRefresh();
 }
 
-function clTemplateAction(ds) {
-  const settings = clState().settings, template = clTemplates().find(t => t.id === ds.tpl);
-  if (!CL.unlocked || !template) return;
-  if (ds.clact === 'tpldup') {
-    if (clState().templates.filter(t => !t.deletedAt).length >= CL_LIMITS.templates) return notify('Delete a template before adding another.');
-    const copy = clDuplicate(template, clNewId, clNow());
-    clState().templates.push(copy);
-    settings.active[copy.type] = copy.id;
-    if (!clSave()) return;
-    notify(`${copy.name} is now used for ${CL_TYPE_NAMES[copy.type]}.`);
-    return go('checklistsedit/' + copy.id);
-  }
-  if (ds.clact === 'tpldel' && !confirm(`Delete ${template.name}? Past checklists keep their copy.`)) return;
-  if (ds.clact === 'tpldel') template.deletedAt = clNow();
-  if (ds.clact === 'tpluse') settings.active[template.type] = template.id;
-  clState().settings = clCleanSettings(clState().settings, clState().templates);
-  if (!clSave()) return;
-  clRefresh();
-}
-
-function clSaveCutoff() {
-  const value = $('clCutoff').value;
-  if (!CL_CUTOFF_RE.test(value)) return notify('Pick a time such as 06:00.');
-  clState().settings.dayCutoff = value;
-  if (!clSave()) return;
-  notify('Business day now starts at ' + value + '.');
-  clRefresh();
-}
-
 Object.assign(CL_ACTIONS, {
-  manage: clManageOpen, pinset: clPinSet, pincheck: clPinCheck, pinforgot: clPinForgot, pinreset: clPinReset,
-  tpldup: clTemplateAction, tpluse: clTemplateAction, tpldel: clTemplateAction, cutoff: clSaveCutoff,
-  edsave: clEditSave, edaddsec: clEditStructure, edaddtask: clEditStructure, eddeltask: clEditStructure,
-  eddelsec: clEditStructure, edmove: clEditStructure,
+  settings: clSettingsDialog, cutoff: clSaveCutoff, newlist: clNewListDialog, newlistgo: clNewListCreate,
+  edsave: clEditSave, edreset: clEditRemove, eddelete: clEditRemove,
+  edaddsec: clEditStructure, edaddtask: clEditStructure, eddeltask: clEditStructure, eddelsec: clEditStructure, edmove: clEditStructure,
   edcancel: () => {
     CL.editDraft = null;
-    go('checklistsmanage');
-  },
-  lock: () => {
-    CL.unlocked = false;
     go('checklists');
   }
 });
@@ -244,6 +197,14 @@ document.addEventListener('change', e => {
   if (!e.target.dataset || !e.target.dataset.cled) return;
   clEditInput(e.target);
   if (e.target.dataset.cled === 'kind') clRefresh();
+});
+
+/* Remembers the section being edited, so library tasks go there by default. */
+document.addEventListener('focusin', e => {
+  const el = e.target.closest && e.target.closest('[data-sec],[data-task]');
+  if (!el || !CL.editDraft) return;
+  const task = el.dataset.task && CL.editDraft.tasks.find(t => t.id === el.dataset.task);
+  CL.editSection = el.dataset.sec || (task && task.sectionId) || CL.editSection;
 });
 
 clInit();

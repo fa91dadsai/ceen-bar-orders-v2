@@ -49,7 +49,6 @@ async function clRestore(block, target, previous) {
     await clReplaceAll(history.runs, history.entries);
   }
   target.checklists = next;
-  CL.unlocked = false;
   CL.editDraft = null;
 }
 
