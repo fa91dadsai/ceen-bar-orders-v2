@@ -135,19 +135,60 @@ function clCleanSettings(raw, templates) {
 }
 
 /* The optional `checklists` block of the main db (templates, settings). Never throws. */
-function clCleanState(raw) {
-  const src = clIsPlain(raw) ? raw : {}, seen = new Set();
-  /* Live templates first, so deleted ones never push a live one past the limit. */
-  const templates = (Array.isArray(src.templates) ? src.templates : []).slice(0, CL_LIMITS.templates * 4)
+const CL_DELETED_KEEP_MS = 180 * 864e5;
+const CL_RAW_TEMPLATES_MAX = 1000;
+
+/* Built-in copies that are not active are invisible; soft-delete them so they never count or show. */
+function clRetireInactive(templates, active, now) {
+  return templates.map(t => (!t.deletedAt && t.type !== 'custom' && active[t.type] !== t.id ? { ...t, deletedAt: now } : t));
+}
+
+/* Live templates are never dropped. Soft-deleted ones (runs keep their own snapshot) are kept only
+   for 180 days and at most CL_LIMITS.templates of them, newest first. */
+function clPruneDeleted(templates, nowMs) {
+  const live = templates.filter(t => !t.deletedAt);
+  const deleted = templates.filter(t => t.deletedAt && nowMs - Date.parse(t.deletedAt) < CL_DELETED_KEEP_MS)
+    .sort((a, b) => (a.deletedAt < b.deletedAt ? 1 : -1)).slice(0, CL_LIMITS.templates);
+  return [...live, ...deleted];
+}
+
+/* Templates the hub shows (live custom checklists and active built-in copies); the limit counts only these. */
+const clVisibleTemplateCount = state => state.templates.filter(t => !t.deletedAt).length;
+
+/* The optional `checklists` block of the main db (templates, settings). Never throws. */
+function clCleanState(raw, nowMs = Date.now()) {
+  const src = clIsPlain(raw) ? raw : {}, seen = new Set(), now = new Date(nowMs).toISOString();
+  const cleaned = (Array.isArray(src.templates) ? src.templates : []).slice(0, CL_RAW_TEMPLATES_MAX)
     .map(clCleanTemplate)
-    .filter(t => t && !clIsStarterId(t.id) && !seen.has(t.id) && seen.add(t.id))
-    .sort((a, b) => Number(!!a.deletedAt) - Number(!!b.deletedAt))
-    .slice(0, CL_LIMITS.templates);
+    .filter(t => t && !clIsStarterId(t.id) && !seen.has(t.id) && seen.add(t.id));
+  const settings = clCleanSettings(src.settings, cleaned);
+  const templates = clPruneDeleted(clRetireInactive(cleaned, settings.active, now), nowMs);
   /* An old manager `pin` field is ignored and dropped here. */
-  return {
-    templates, settings: clCleanSettings(src.settings, templates), deviceId: clId(src.deviceId),
-    orderGuards: clCleanGuards(src.orderGuards, Date.now())
+  return { templates, settings, deviceId: clId(src.deviceId), orderGuards: clCleanGuards(src.orderGuards, nowMs) };
+}
+
+/* '' when the draft fits the limits, otherwise a message; the editor refuses to save rather than truncate. */
+function clLimitProblem(draft, extraSections = 0, extraTasks = 0) {
+  if (draft.sections.length + extraSections > CL_LIMITS.sections) return `A checklist can have at most ${CL_LIMITS.sections} sections.`;
+  if (draft.tasks.length + extraTasks > CL_LIMITS.tasks) return `A checklist can have at most ${CL_LIMITS.tasks} tasks.`;
+  return '';
+}
+
+/* Keeps the newest runs (with their entries) whose backup still fits in maxBytes.
+   `measure(runs, entries)` returns the serialized backup size; binary search keeps it to ~13 calls. */
+function clFitHistory(runs, entries, maxBytes, measure) {
+  const newest = [...runs].sort((a, b) => (a.businessDate === b.businessDate ? (a.startedAt < b.startedAt ? 1 : -1) : a.businessDate < b.businessDate ? 1 : -1));
+  const pick = n => {
+    const ids = new Set(newest.slice(0, n).map(r => r.id));
+    return { runs: newest.slice(0, n), entries: entries.filter(e => ids.has(e.runId)) };
   };
+  let low = 0, high = newest.length;
+  while (low < high) {
+    const mid = Math.ceil((low + high) / 2), part = pick(mid);
+    if (measure(part.runs, part.entries) <= maxBytes) low = mid;
+    else high = mid - 1;
+  }
+  return { ...pick(low), trimmed: low < newest.length };
 }
 
 /* "Added to order draft" guards keyed runId:taskId. They live in db.checklists so the guard and the

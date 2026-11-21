@@ -25,12 +25,24 @@ function clAllEntries() {
   return [...CL.entries.values()].flat();
 }
 
+const CL_BACKUP_MAX_BYTES = 4.5e6;
+
+/* Same serialization as the backup download (indent 2), so the size check matches the file. */
+function clBackupBytes(value) {
+  return new TextEncoder().encode(JSON.stringify(value, null, 2)).length;
+}
+
 function clBackup(source) {
   const from = clShiftDate(clToday(), -CL_BACKUP_DAYS);
-  const runs = CL.runs.filter(r => r.businessDate >= from), runIds = new Set(runs.map(r => r.id));
-  const entries = clAllEntries().filter(e => runIds.has(e.runId));
-  CL.backupNote = ` Includes ${clPlural(runs.length, 'checklist run')} from the last ${CL_BACKUP_DAYS} days.`;
-  return { ...source, checklists: { ...clCleanState(source.checklists), runs, entries } };
+  const recent = CL.runs.filter(r => r.businessDate >= from), recentIds = new Set(recent.map(r => r.id));
+  const block = clCleanState(source.checklists);
+  const build = (runs, entries) => ({ ...source, checklists: { ...block, runs, entries } });
+  const fit = clFitHistory(recent, clAllEntries().filter(e => recentIds.has(e.runId)), CL_BACKUP_MAX_BYTES, (r, e) => clBackupBytes(build(r, e)));
+  const oldest = fit.runs.length ? fit.runs[fit.runs.length - 1].businessDate : clToday();
+  const days = Math.round((Date.parse(clToday()) - Date.parse(oldest)) / 864e5) + 1;
+  CL.backupNote = ` Includes ${clPlural(fit.runs.length, 'checklist run')} from the last ${days} ${days === 1 ? 'day' : 'days'}` +
+    (fit.trimmed ? ' (older runs left out to keep the file small enough to restore).' : '.');
+  return build(fit.runs, fit.entries);
 }
 
 const clBackupNote = () => CL.backupNote || '';

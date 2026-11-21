@@ -77,3 +77,6 @@
 .cl-lib-row:disabled{opacity:.75}
 .cl-lib-row.is-done .cl-box{background:var(--action);border-color:var(--action)}
 .cl-lib-row:not(.is-done) .cl-box{color:var(--green)}
+.cl-ed-task.is-invalid .cl-ed-label{border-color:var(--danger);outline:2px solid var(--danger)}
+.cl-ed-err{margin:0}
+.cl-limit{color:var(--warn);font-weight:600}

@@ -98,6 +98,8 @@ function clLibAdd(ds) {
   const draft = CL.editDraft, task = CL.lib && CL.lib.tasks.find(t => t.id === ds.lib);
   const sectionId = $('clLibSec') && $('clLibSec').value;
   if (!draft || !task || clLibTaken(task) || !draft.sections.some(s => s.id === sectionId)) return;
+  const full = clLimitProblem(draft, 0, 1);
+  if (full) return clError(full);
   const inSection = draft.tasks.filter(t => t.sectionId === sectionId);
   draft.tasks.push({
     id: clNewId(), sectionId, label: task.label, kind: task.kind, unit: task.unit, min: task.min, max: task.max,

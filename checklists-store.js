@@ -7,7 +7,7 @@ const CL_DB_VERSION = 1;
 const CL = {
   ready: false, memoryOnly: false, warned: false, idb: null,
   runs: [], entries: new Map(), rev: 0, issueCache: null,
-  editDraft: null, editKey: null, editSection: null, lib: null, collapsed: new Set(), stock: null
+  editDraft: null, editKey: null, editSection: null, editInvalid: null, lib: null, collapsed: new Set(), stock: null
 };
 
 const clNewId = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : uid('cl'));

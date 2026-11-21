@@ -2,9 +2,19 @@
 /* Checklists v1 — editing: open a checklist's tasks straight from its card, create custom checklists,
    day-cutoff setting. Single-user app: no PIN. Loaded last of the checklist files, so it starts the feature. */
 const CL_APPLY_NOTE = 'Changes apply the next time you start this checklist.';
+const CL_TASK_PLACEHOLDER = 'Type the task, e.g. Check fire exit';
+const CL_EMPTY_TASK = 'Type the task name here, or remove this task.';
+
+/* After a re-render: bring a task's name field into view and focus it (opens the phone keyboard). */
+function clFocusTask(taskId) {
+  const input = document.querySelector(`.cl-ed-label[data-task="${CSS.escape(taskId)}"]`);
+  if (!input) return;
+  input.scrollIntoView({ block: 'center' });
+  input.focus();
+}
 
 function clLiveTemplateCount() {
-  return clState().templates.filter(t => !t.deletedAt).length;
+  return clVisibleTemplateCount(clState());
 }
 
 function clSettingsDialog() {
@@ -52,7 +62,9 @@ function clEditLimits(task) {
 function clEditTask(task) {
   const id = esc(task.id), on = (a, b) => (a === b ? ' selected' : '');
   const links = ['', ...Object.keys(CL_LINKS)].map(k => `<option value="${k}"${on(task.link, k)}>${k ? 'Link: ' + CL_LINKS[k] : 'No link'}</option>`).join('');
-  return `<div class="cl-ed-task"><input class="cl-ed-label" data-cled="label" data-task="${id}" value="${esc(task.label)}" maxlength="${CL_LIMITS.label}" aria-label="Task" dir="auto">` +
+  const invalid = CL.editInvalid === task.id;
+  return `<div class="cl-ed-task${invalid ? ' is-invalid' : ''}"><input class="cl-ed-label" data-cled="label" data-task="${id}" value="${esc(task.label)}" maxlength="${CL_LIMITS.label}" aria-label="Task" dir="auto" placeholder="${CL_TASK_PLACEHOLDER}"${invalid ? ' aria-invalid="true"' : ''}>` +
+    (invalid ? `<p class="error cl-ed-err" role="alert">${CL_EMPTY_TASK}</p>` : '') +
     `<div class="cl-ed-grid"><select data-cled="kind" data-task="${id}" aria-label="Kind"><option value="check"${on(task.kind, 'check')}>Tick</option><option value="number"${on(task.kind, 'number')}>Number</option></select>` +
     `<select data-cled="link" data-task="${id}" aria-label="Link">${links}</select>` +
     `<label class="cl-ed-mini cl-ed-check"><input type="checkbox" data-cled="required" data-task="${id}"${task.required ? ' checked' : ''}>Required</label></div>${clEditLimits(task)}` +
@@ -73,6 +85,7 @@ function clEditDraftFor(key, card) {
   if (CL.editDraft && CL.editKey === key) return CL.editDraft;
   CL.editKey = key;
   CL.editSection = null;
+  CL.editInvalid = null;
   CL.editDraft = clIsStarterId(card.template.id) ? clDuplicate(card.template, clNewId, clNow()) : clone(card.template);
   return CL.editDraft;
 }
@@ -83,16 +96,26 @@ function clEditDanger(card) {
   return '<button type="button" class="danger-text" data-clact="edreset">Reset to default</button>';
 }
 
+/* At the limit, Add buttons are disabled and a short line says why (Save also refuses over-limit drafts). */
+function clEditLimitGuard(html, draft) {
+  const fullTasks = draft.tasks.length >= CL_LIMITS.tasks, fullSections = draft.sections.length >= CL_LIMITS.sections;
+  let out = html;
+  if (fullTasks) out = out.split('data-clact="edaddtask"').join('disabled data-clact="edaddtask"').replace('data-clact="libopen"', 'disabled data-clact="libopen"');
+  if (fullSections) out = out.replace('data-clact="edaddsec"', 'disabled data-clact="edaddsec"');
+  const notes = [fullTasks ? `the limit of ${CL_LIMITS.tasks} tasks` : '', fullSections ? `the limit of ${CL_LIMITS.sections} sections` : ''].filter(Boolean);
+  return notes.length ? `<p class="hint cl-limit" role="status">This checklist has reached ${notes.join(' and ')}.</p>` + out : out;
+}
+
 function clEditPage(key) {
   const card = clCardByKey(key);
   if (!card) return clHubPage();
   const draft = clEditDraftFor(key, card), maxName = card.type === 'custom' ? CL_LIMITS.customName : CL_LIMITS.name;
   footer('<button type="button" data-clact="edcancel">Cancel</button><button type="button" class="primary" data-clact="edsave">Save</button>');
-  return `${rcvBar('checklists', 'Edit ' + card.title, '')}<p class="hint cl-ed-note">${CL_APPLY_NOTE}</p>` +
+  return `${rcvBar('checklists', 'Edit ' + card.title, '')}` + clEditLimitGuard(`<p class="hint cl-ed-note">${CL_APPLY_NOTE}</p>` +
     clField('clTplName', 'Checklist name', `<input id="clTplName" data-cled="name" value="${esc(draft.name)}" maxlength="${maxName}" dir="auto">`) +
     clOrdered(draft).map(clEditSection).join('') +
     '<div class="toolbar-row"><button type="button" class="ghost" data-clact="edaddsec">+ Add section</button><button type="button" data-clact="libopen">+ Add from library</button></div>' +
-    `<div class="toolbar-row">${clEditDanger(card)}</div>`;
+    `<div class="toolbar-row">${clEditDanger(card)}</div>`, draft);
 }
 
 /* Reorder by swapping `order` with the neighbour; orders are renumbered first so they stay unique. */
@@ -111,6 +134,13 @@ function clEditInput(el) {
   const task = el.dataset.task && draft.tasks.find(t => t.id === el.dataset.task);
   if (!task) return;
   if (field === 'label' || field === 'unit' || field === 'kind' || field === 'link') task[field] = el.value;
+  if (field === 'label' && CL.editInvalid === task.id && el.value.trim()) {
+    CL.editInvalid = null;
+    el.removeAttribute('aria-invalid');
+    el.closest('.cl-ed-task').classList.remove('is-invalid');
+    const message = el.closest('.cl-ed-task').querySelector('.cl-ed-err');
+    if (message) message.remove();
+  }
   if (field === 'required') task.required = el.checked;
   if (field === 'min' || field === 'max') task[field] = el.value.trim() === '' ? null : Number(el.value.replace(',', '.'));
 }
@@ -118,7 +148,8 @@ function clEditInput(el) {
 function clEditProblem(draft) {
   if (clStr(draft.name, CL_LIMITS.name).length < 2) return 'Give the checklist a name (at least 2 characters).';
   if (!draft.tasks.length) return 'Add at least one task.';
-  if (draft.tasks.some(t => !clStr(t.label, CL_LIMITS.label))) return 'Every task needs a name.';
+  const overLimit = clLimitProblem(draft);
+  if (overLimit) return overLimit + ' Remove some before saving.';
   if (draft.tasks.some(t => t.kind === 'number' && [t.min, t.max].some(v => v !== null && !Number.isFinite(v)))) return 'Min and max must be numbers.';
   return '';
 }
@@ -127,6 +158,13 @@ function clEditSave() {
   const draft = CL.editDraft;
   if (!draft) return;
   if (!clCanSave()) return clSave();
+  const unnamed = clOrdered(draft).flatMap(g => g.tasks).find(t => !clStr(t.label, CL_LIMITS.label));
+  if (unnamed) {
+    CL.editInvalid = unnamed.id;
+    clRefresh();
+    clFocusTask(unnamed.id);
+    return notify('A task has no name yet. ' + CL_EMPTY_TASK);
+  }
   const problem = clEditProblem(draft);
   if (problem) return notify(problem);
   const list = clState().templates, index = list.findIndex(t => t.id === draft.id);
@@ -136,7 +174,7 @@ function clEditSave() {
   if (index < 0) list.push(saved);
   else list[index] = saved;
   if (saved.type !== 'custom') clState().settings.active[saved.type] = saved.id;
-  clState().settings = clCleanSettings(clState().settings, list);
+  Object.assign(clState(), clCleanState(clState()));
   CL.editDraft = null;
   if (!clSave()) return;
   notify('Saved. ' + CL_APPLY_NOTE);
@@ -152,7 +190,7 @@ function clEditRemove(ds) {
   if (!confirm(question)) return;
   if (!clCanSave()) return clSave();
   card.template.deletedAt = clNow();
-  clState().settings = clCleanSettings(clState().settings, clState().templates);
+  Object.assign(clState(), clCleanState(clState()));
   CL.editDraft = null;
   if (!clSave()) return;
   notify(isReset ? `${card.title} uses the default tasks again.` : `${card.title} deleted.`);
@@ -163,8 +201,11 @@ function clEditStructure(ds) {
   const draft = CL.editDraft;
   if (!draft) return;
   const action = ds.clact, dir = Number(ds.dir);
+  const full = action === 'edaddsec' ? clLimitProblem(draft, 1, 0) : action === 'edaddtask' ? clLimitProblem(draft, 0, 1) : '';
+  if (full) return notify(full);
   if (action === 'edaddsec') draft.sections.push({ id: clNewId(), name: 'New section', order: draft.sections.length });
-  if (action === 'edaddtask') draft.tasks.push({ id: clNewId(), sectionId: ds.sec, label: 'New task', kind: 'check', unit: '', min: null, max: null, required: true, order: draft.tasks.length, link: '', sourceId: '' });
+  const newId = clNewId();
+  if (action === 'edaddtask') draft.tasks.push({ id: newId, sectionId: ds.sec, label: '', kind: 'check', unit: '', min: null, max: null, required: true, order: draft.tasks.length, link: '', sourceId: '' });
   if (action === 'edaddtask') CL.editSection = ds.sec;
   if (action === 'eddeltask') draft.tasks = draft.tasks.filter(t => t.id !== ds.task);
   if (action === 'eddelsec') {
@@ -177,6 +218,7 @@ function clEditStructure(ds) {
     clMove(draft.tasks.filter(t => t.sectionId === task.sectionId), ds.task, dir);
   }
   clRefresh();
+  if (action === 'edaddtask') clFocusTask(newId);
 }
 
 Object.assign(CL_ACTIONS, {
