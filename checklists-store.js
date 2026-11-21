@@ -14,6 +14,9 @@ const clNewId = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() 
 const clNow = () => new Date().toISOString();
 const clState = () => db.checklists;
 const clStaffNow = () => cleanName(db.preferences.preparerName) || clState().settings.lastStaff || 'Staff';
+/* False when stored data failed to load and the app runs on the empty fallback: saving then would
+   overwrite the original data that a backup restore could still recover. */
+const clCanSave = () => !loadFailed;
 const clToday = () => clBusinessDate(new Date(), clState().settings.dayCutoff);
 
 function clVibrate() {
@@ -22,6 +25,15 @@ function clVibrate() {
   } catch (e) {
     /* Vibration is optional feedback; some browsers block it */
   }
+}
+
+function clSave() {
+  if (!clCanSave()) {
+    notify('Saved data could not be loaded, so changes are not saved. Restore a backup first.');
+    return false;
+  }
+  save();
+  return storageOK;
 }
 
 function clStorageFailed(error) {
@@ -124,15 +136,17 @@ function clAddEntry(run, taskId, fields) {
   return entry;
 }
 
-function clReplaceAll(runs, entries) {
-  clSetMemory(runs, entries);
-  return clIdbWrite(['runs', 'entries'], tx => {
+/* Restore path: writes first and throws on failure, so memory only changes once IndexedDB has it. */
+async function clReplaceAll(runs, entries) {
+  if (CL.memoryOnly || !CL.idb) throw new Error('Checklist history cannot be saved on this device.');
+  await clTx(['runs', 'entries'], 'readwrite', tx => {
     const runStore = tx.objectStore('runs'), entryStore = tx.objectStore('entries');
     runStore.clear();
     entryStore.clear();
-    CL.runs.forEach(r => runStore.put(clone(r)));
-    for (const list of CL.entries.values()) list.forEach(e => entryStore.put(e));
+    runs.forEach(r => runStore.put(clone(r)));
+    entries.forEach(e => entryStore.put(e));
   });
+  clSetMemory(runs, entries);
 }
 
 const clRunById = id => CL.runs.find(r => r.id === id) || null;
@@ -177,32 +191,9 @@ function clStartRun(type, staffName) {
     deviceId: clState().deviceId, ack: null, orderAdds: {}
   });
   clState().settings.lastStaff = staffName;
-  save();
+  clSave();
   clPutRun(run);
   return run;
-}
-
-/* Backup: the main db plus templates and the run history from memory (which mirrors IndexedDB). */
-function clBackup(source) {
-  const entries = [];
-  for (const list of CL.entries.values()) entries.push(...list);
-  return { ...source, checklists: { ...clCleanState(source.checklists), runs: CL.runs, entries } };
-}
-
-/* Restore: a backup without a `checklists` block keeps this device's templates and runs. */
-async function clRestore(block, previous) {
-  if (!clIsPlain(block)) {
-    db.checklists = clCleanState(previous);
-    return;
-  }
-  db.checklists = clCleanState(block);
-  db.checklists.deviceId = clId(previous && previous.deviceId) || db.checklists.deviceId || clNewId();
-  CL.unlocked = false;
-  CL.editDraft = null;
-  if (!Array.isArray(block.runs)) return;
-  const runs = block.runs.slice(0, CL_LIMITS.runs).map(clCleanRun).filter(Boolean);
-  const entries = (Array.isArray(block.entries) ? block.entries : []).slice(0, CL_LIMITS.entries).map(clCleanEntry).filter(Boolean);
-  await clReplaceAll(runs, entries);
 }
 
 function clRerenderIfVisible() {
@@ -211,17 +202,20 @@ function clRerenderIfVisible() {
 }
 
 async function clInit() {
+  const embedded = clEmbeddedHistory(db.checklists);
   db.checklists = clCleanState(db.checklists);
   if (!db.checklists.deviceId) {
     db.checklists.deviceId = clNewId();
-    save();
+    if (clCanSave()) save();
   }
   try {
     CL.idb = await clIdbOpen();
     await clLoadAll();
+    await clPruneOld();
   } catch (error) {
     clStorageFailed(error);
   }
+  await clMigrateEmbedded(embedded);
   CL.ready = true;
   clRerenderIfVisible();
 }

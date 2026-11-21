@@ -1,7 +1,18 @@
 'use strict';
 /* Checklists v1 — pages: Home card, hub, run screen, history. Every dynamic string goes through esc(). */
 const clPlural = (n, word) => n + ' ' + word + (n === 1 ? '' : 's');
-const clDateText = iso => new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(iso + 'T00:00:00Z'));
+/* Formatting never throws: a bad date shows as plain text instead of breaking Home. */
+function clSafeFormat(format, value) {
+  try {
+    return format();
+  } catch (error) {
+    console.warn('Unreadable checklist date', value, error);
+    return String(value || '');
+  }
+}
+const clDateText = iso => clSafeFormat(() => new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).format(new Date(iso + 'T00:00:00Z')), iso);
+const clTime = iso => clSafeFormat(() => stockTime(iso), iso);
+const clDateTime = iso => clSafeFormat(() => stockDateTime(new Date(iso)), iso);
 
 function clBanner() {
   if (!CL.memoryOnly) return '';
@@ -53,7 +64,7 @@ function clTypeStatus(type) {
   const p = clRunProgress(run), view = `<button type="button" data-go="checklistsrun/${esc(run.id)}">${run.completedAt ? 'View' : 'Continue'}</button>`;
   if (!run.completedAt) return { status: `In progress ${p.done}/${p.total} · ${run.staffName}`, buttons: view };
   const ack = run.type === 'handover' ? (run.ack ? ' · read by ' + run.ack.name : ' · not acknowledged') : '';
-  return { status: `Finished ${stockTime(run.completedAt)} by ${run.staffName}${ack}`, buttons: view + start.replace('>Start<', '>Start again<') };
+  return { status: `Finished ${clTime(run.completedAt)} by ${run.staffName}${ack}`, buttons: view + start.replace('>Start<', '>Start again<') };
 }
 
 function clTypeCard(type) {
@@ -72,7 +83,7 @@ function clAckSection() {
   if (!list.length) return '';
   return '<h2 class="home-h">Handover to read</h2>' + list.map(run => {
     const issues = clRunProgress(run).openIssues.length;
-    const line = `By ${run.staffName} at ${stockTime(run.completedAt)}${issues ? ' · ' + clPlural(issues, 'open issue') : ''}`;
+    const line = `By ${run.staffName} at ${clTime(run.completedAt)}${issues ? ' · ' + clPlural(issues, 'open issue') : ''}`;
     return `<article class="cl-type cl-ack"><div><b>Handover</b><small>${esc(line)}</small></div><div class="cl-type-btns">` +
       `<button type="button" data-go="checklistsrun/${esc(run.id)}">Read</button><button type="button" class="primary" data-clact="ack" data-run="${esc(run.id)}">I've read this</button></div></article>`;
   }).join('');
@@ -115,10 +126,10 @@ function clSection(run, group, progress, live) {
 
 function clRunStatus(run, progress) {
   if (!run.completedAt) return '';
-  const ack = run.type !== 'handover' ? '' : run.ack ? ` · Read by ${run.ack.name} at ${stockTime(run.ack.at)}` : ' · Not acknowledged yet';
+  const ack = run.type !== 'handover' ? '' : run.ack ? ` · Read by ${run.ack.name} at ${clTime(run.ack.at)}` : ' · Not acknowledged yet';
   const button = run.type === 'handover' && !run.ack ? `<button type="button" class="primary" data-clact="ack" data-run="${esc(run.id)}">I've read this</button>` : '';
   const issues = progress.openIssues.length ? ` · ${clPlural(progress.openIssues.length, 'open issue')}` : '';
-  return `<div class="cl-status"><p>${esc(`Finished ${stockDateTime(new Date(run.completedAt))}${issues}${ack}`)}</p>${button}</div>`;
+  return `<div class="cl-status"><p>${esc(`Finished ${clDateTime(run.completedAt)}${issues}${ack}`)}</p>${button}</div>`;
 }
 
 function clRunPage(id) {
@@ -135,7 +146,7 @@ function clRunPage(id) {
 
 function clHistoryRow(run) {
   const p = clRunProgress(run), issues = p.openIssues.length ? ' · ' + clPlural(p.openIssues.length, 'open issue') : '';
-  const state = run.completedAt ? 'Finished ' + stockTime(run.completedAt) : 'Not finished';
+  const state = run.completedAt ? 'Finished ' + clTime(run.completedAt) : 'Not finished';
   const ack = run.type === 'handover' && run.ack ? ' · read by ' + run.ack.name : '';
   return `<button type="button" class="cl-hist" data-go="checklistsrun/${esc(run.id)}"><b>${CL_TYPE_NAMES[run.type]}</b>` +
     `<small>${esc(`${run.staffName} · ${p.done}/${p.total} · ${state}${issues}${ack}`)}</small></button>`;

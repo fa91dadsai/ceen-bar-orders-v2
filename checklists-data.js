@@ -15,8 +15,19 @@ const CL_ID_RE = /^[A-Za-z0-9_-]{1,80}$/;
 const CL_CUTOFF_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const CL_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+const CL_ISO_RE = /^(\d{4}-\d{2}-\d{2})T\d{2}:\d{2}:\d{2}(\.\d{1,3})?Z$/;
+const CL_GUARD_KEEP_MS = 7 * 864e5;
 const clStr = (v, n) => typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, n) : '';
-const clIso = v => typeof v === 'string' && Number.isFinite(Date.parse(v)) ? v : null;
+/* A real calendar date: 2026-13-01 or 2026-02-30 fail the round trip. */
+function clValidDate(v) {
+  if (typeof v !== 'string' || !CL_DATE_RE.test(v)) return false;
+  const [y, m, d] = v.split('-').map(Number), date = new Date(Date.UTC(y, m - 1, d));
+  return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
+}
+const clIso = v => {
+  const match = typeof v === 'string' ? CL_ISO_RE.exec(v) : null;
+  return match && clValidDate(match[1]) && Number.isFinite(Date.parse(v)) ? v : null;
+};
 const clNum = v => typeof v === 'number' && Number.isFinite(v) ? v : null;
 const clId = v => typeof v === 'string' && CL_ID_RE.test(v) ? v : null;
 const clIsPlain = v => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -130,7 +141,25 @@ function clCleanState(raw) {
     .slice(0, CL_LIMITS.templates);
   const pin = clIsPlain(src.pin) && /^[0-9a-f]{64}$/.test(src.pin.hash) && /^[0-9a-f]{32}$/.test(src.pin.salt)
     ? { hash: src.pin.hash, salt: src.pin.salt } : null;
-  return { templates, settings: clCleanSettings(src.settings, templates), pin, deviceId: clId(src.deviceId) };
+  return {
+    templates, settings: clCleanSettings(src.settings, templates), pin, deviceId: clId(src.deviceId),
+    orderGuards: clCleanGuards(src.orderGuards, Date.now())
+  };
+}
+
+/* "Added to order draft" guards keyed runId:taskId. They live in db.checklists so the guard and the
+   draft line are saved in the same localStorage write; a week is far longer than any open run. */
+function clCleanGuards(raw, now) {
+  const out = {};
+  if (!clIsPlain(raw)) return out;
+  for (const [key, guard] of Object.entries(raw)) {
+    const [runId, taskId] = key.split(':');
+    const at = clIsPlain(guard) ? clIso(guard.at) : null;
+    if (clId(runId) && clId(taskId) && at && now - Date.parse(at) < CL_GUARD_KEEP_MS && clId(guard.itemId) && clNum(guard.qty) !== null) {
+      out[key] = { itemId: guard.itemId, qty: guard.qty, at };
+    }
+  }
+  return out;
 }
 
 function clCleanOrderAdds(raw) {
@@ -148,7 +177,7 @@ function clCleanRun(raw) {
   if (!clIsPlain(raw) || !clId(raw.id) || !clId(raw.templateId) || !clIsPlain(raw.snapshot)) return null;
   const type = CL_TYPES.includes(raw.type) ? raw.type : null, startedAt = clIso(raw.startedAt);
   const body = clCleanBody(raw.snapshot);
-  if (!type || !startedAt || !CL_DATE_RE.test(raw.businessDate) || !body.tasks.length) return null;
+  if (!type || !startedAt || !clValidDate(raw.businessDate) || !body.tasks.length) return null;
   const ackName = clIsPlain(raw.ack) ? clStr(raw.ack.name, CL_LIMITS.staff) : '';
   return {
     id: raw.id, templateId: raw.templateId, templateVersion: Number.isInteger(raw.templateVersion) ? raw.templateVersion : 1,

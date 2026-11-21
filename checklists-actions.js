@@ -59,7 +59,7 @@ function clIssueDialog(run, task) {
 function clIssueView(run, task, issue) {
   const ids = `data-run="${esc(run.id)}" data-task="${esc(task.id)}"`;
   clDialog('Open issue', `<p><b>${esc(task.label)}</b></p><p>${esc(issue.note)}</p>` +
-    (issue.nextAction ? `<p class="hint">Next: ${esc(issue.nextAction)}</p>` : '') + `<p class="hint">${esc(issue.byName)} · ${esc(stockTime(issue.at))}</p>`,
+    (issue.nextAction ? `<p class="hint">Next: ${esc(issue.nextAction)}</p>` : '') + `<p class="hint">${esc(issue.byName)} · ${esc(clTime(issue.at))}</p>`,
     `<button type="button" data-clact="issue" ${ids}>Edit issue</button><button type="button" class="primary" data-clact="resolve" ${ids}>Resolve</button>`);
 }
 
@@ -101,7 +101,7 @@ function clStockResults() {
 }
 
 function clStockItem(item) {
-  const run = clRunById(CL.stock.runId), added = run && run.orderAdds[CL.stock.taskId], av = db.availability[item.id], qty = line(item.id).qty;
+  const run = clRunById(CL.stock.runId), added = clAddedFor(run, CL.stock), av = db.availability[item.id], qty = line(item.id).qty;
   const now = av ? (av.status === '86' ? '86 Out' : '85 Low') : 'In stock';
   const add = added
     ? `<p class="hint">Already added ${esc(added.qty)} to the order draft for this task.</p>`
@@ -128,27 +128,48 @@ function clStockDialog(run, task) {
     '<button type="button" class="primary" data-close="clDialog">Done</button>');
 }
 
+const clGuardKey = s => s.runId + ':' + s.taskId;
+const clAddedFor = (run, s) => (run && run.orderAdds[s.taskId]) || clState().orderGuards[clGuardKey(s)] || null;
+
+/* Quantity actually added, capped at QTY_MAX; 0 when the draft is already at the cap. */
+function clDraftAddAmount(current, qty, item) {
+  if (current >= QTY_MAX) {
+    clError(`${item.name} is already at the maximum (${QTY_MAX}) in the order draft.`);
+    return 0;
+  }
+  return r2(Math.min(qty, QTY_MAX - current));
+}
+
+/* The guard and the draft line go out in one localStorage write; on failure both are rolled back. */
 function clAddToDraft() {
   const s = CL.stock, run = s && clRunById(s.runId), item = s && byId[s.itemId];
-  if (!run || !item) return;
-  if (run.orderAdds[s.taskId]) {
-    notify('Already added to the order draft for this task.');
-    return;
-  }
+  if (!run || !item || !clCanSave()) return clError('Changes cannot be saved right now.');
+  if (clAddedFor(run, s)) return notify('Already added to the order draft for this task.');
   const qty = parseQty($('clAddQty').value, item.unit);
-  if (qty === null || qty <= 0) {
-    clError(qtyRule(item.unit));
-    return;
-  }
+  if (qty === null || qty <= 0) return clError(qtyRule(item.unit));
   /* Same line shape as carryIntoDraft: validateOrder rejects a line without `unit`. */
-  const current = db.order.lines[item.id] || { qty: 0, note: '', stock: '' };
-  db.order.lines[item.id] = { ...current, unit: item.unit, qty: Math.min(QTY_MAX, r2(current.qty + qty)) };
+  const prior = db.order.lines[item.id], current = prior || { qty: 0, note: '', stock: '' };
+  const added = clDraftAddAmount(current.qty, qty, item);
+  if (!added) return;
+  const priorVisited = db.order.visited[item.id], priorSkipped = db.order.skipped && db.order.skipped[item.id];
+  const guard = { itemId: item.id, qty: added, at: clNow() };
+  clState().orderGuards[clGuardKey(s)] = guard;
+  db.order.lines[item.id] = { ...current, unit: item.unit, qty: r2(current.qty + added) };
   db.order.visited[item.id] = true;
   if (db.order.skipped) delete db.order.skipped[item.id];
   save();
-  run.orderAdds[s.taskId] = { itemId: item.id, qty, at: clNow() };
+  if (!storageOK) {
+    delete clState().orderGuards[clGuardKey(s)];
+    if (prior) db.order.lines[item.id] = prior;
+    else delete db.order.lines[item.id];
+    if (!priorVisited) delete db.order.visited[item.id];
+    if (priorSkipped) db.order.skipped[item.id] = priorSkipped;
+    return clError('Could not save the order draft on this device. Nothing was added.');
+  }
+  run.orderAdds[s.taskId] = guard;
   clPutRun(run);
-  notify(`Added ${qty} ${unitText(qty, item.unit)} of ${item.name} to the order draft.`);
+  const capped = added < qty ? ` (capped at ${QTY_MAX})` : '';
+  notify(`Added ${added} ${unitText(added, item.unit)} of ${item.name} to the order draft${capped}.`);
   clStockRefresh();
 }
 
@@ -262,6 +283,7 @@ function clWithRun(show) {
 function clMark(ds) {
   const id = CL.stock && CL.stock.itemId;
   if (!byId[id]) return;
+  if (!clCanSave()) return clError('Changes cannot be saved right now.');
   avApply(id, ds.st, null);
   notify(avMsg(id, ds.st));
   clStockRefresh();

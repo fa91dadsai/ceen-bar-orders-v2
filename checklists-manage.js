@@ -31,7 +31,7 @@ async function clPinSet() {
   } catch (error) {
     return clError(error.message);
   }
-  save();
+  if (!clSave()) return;
   CL.unlocked = true;
   clCloseDialog();
   notify('Manager PIN set.');
@@ -62,18 +62,19 @@ function clPinReset() {
   if (!name) return clError('Set the restaurant name in Edit profile first.');
   if (norm($('clRest').value) !== norm(name)) return clError('That is not the restaurant name.');
   clState().pin = null;
-  save();
+  if (!clSave()) return;
   clPinDialog();
 }
 
 function clManageOpen() {
+  if (!clCanSave()) return notify('Saved data could not be loaded. Restore a backup before changing templates.');
   if (CL.unlocked) return go('checklistsmanage');
   clPinDialog();
 }
 
 function clTemplateRow(template, type) {
   const inUse = clState().settings.active[type] === template.id, isStarter = clIsStarterId(template.id), id = esc(template.id);
-  const info = `v${template.version} · ${clPlural(template.tasks.length, 'task')}${isStarter ? ' · read-only' : ' · updated ' + stockDateTime(new Date(template.updatedAt))}`;
+  const info = `v${template.version} · ${clPlural(template.tasks.length, 'task')}${isStarter ? ' · read-only' : ' · updated ' + clDateTime(template.updatedAt)}`;
   const buttons = (isStarter ? '' : `<button type="button" data-go="checklistsedit/${id}">Edit</button>`) +
     `<button type="button" data-clact="tpldup" data-tpl="${id}">${isStarter ? 'Duplicate & edit' : 'Duplicate'}</button>` +
     (inUse ? '' : `<button type="button" data-clact="tpluse" data-tpl="${id}">Use</button>`) +
@@ -167,7 +168,7 @@ function clEditSave() {
   if (!saved) return notify('This template could not be saved.');
   list[index] = saved;
   CL.editDraft = null;
-  save();
+  if (!clSave()) return;
   notify(`Saved as v${saved.version}. Checklists already started keep their version.`);
   go('checklistsmanage');
 }
@@ -199,15 +200,15 @@ function clTemplateAction(ds) {
     const copy = clDuplicate(template, clNewId, clNow());
     clState().templates.push(copy);
     settings.active[copy.type] = copy.id;
-    save();
+    if (!clSave()) return;
     notify(`${copy.name} is now used for ${CL_TYPE_NAMES[copy.type]}.`);
     return go('checklistsedit/' + copy.id);
   }
   if (ds.clact === 'tpldel' && !confirm(`Delete ${template.name}? Past checklists keep their copy.`)) return;
   if (ds.clact === 'tpldel') template.deletedAt = clNow();
   if (ds.clact === 'tpluse') settings.active[template.type] = template.id;
-  db.checklists = clCleanState(clState());
-  save();
+  clState().settings = clCleanSettings(clState().settings, clState().templates);
+  if (!clSave()) return;
   clRefresh();
 }
 
@@ -215,7 +216,7 @@ function clSaveCutoff() {
   const value = $('clCutoff').value;
   if (!CL_CUTOFF_RE.test(value)) return notify('Pick a time such as 06:00.');
   clState().settings.dayCutoff = value;
-  save();
+  if (!clSave()) return;
   notify('Business day now starts at ' + value + '.');
   clRefresh();
 }
