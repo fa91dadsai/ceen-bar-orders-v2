@@ -2,17 +2,6 @@
 /* Checklists v1 — editing: open a checklist's tasks straight from its card, create custom checklists,
    day-cutoff setting. Single-user app: no PIN. Loaded last of the checklist files, so it starts the feature. */
 const CL_APPLY_NOTE = 'Changes apply the next time you start this checklist.';
-const CL_TASK_PLACEHOLDER = 'Type the task, e.g. Check fire exit';
-const CL_EMPTY_TASK = 'Type the task name here, or remove this task.';
-
-/* After a re-render: bring a task's name field into view and focus it (opens the phone keyboard). */
-function clFocusTask(taskId) {
-  const input = document.querySelector(`.cl-ed-label[data-task="${CSS.escape(taskId)}"]`);
-  if (!input) return;
-  input.scrollIntoView({ block: 'center' });
-  input.focus();
-}
-
 function clLiveTemplateCount() {
   return clVisibleTemplateCount(clState());
 }
@@ -53,39 +42,11 @@ function clNewListCreate() {
   go('checklistsedit/' + template.id);
 }
 
-function clEditLimits(task) {
-  if (task.kind !== 'number') return '';
-  const box = (field, label, value) => `<label class="cl-ed-mini">${label}<input data-cled="${field}" data-task="${esc(task.id)}" value="${esc(value ?? '')}" inputmode="decimal" maxlength="12"></label>`;
-  return `<div class="cl-ed-grid">${box('unit', 'Unit', task.unit)}${box('min', 'Min', task.min)}${box('max', 'Max', task.max)}</div>`;
-}
-
-function clEditTask(task) {
-  const id = esc(task.id), on = (a, b) => (a === b ? ' selected' : '');
-  const links = ['', ...Object.keys(CL_LINKS)].map(k => `<option value="${k}"${on(task.link, k)}>${k ? 'Link: ' + CL_LINKS[k] : 'No link'}</option>`).join('');
-  const invalid = CL.editInvalid === task.id;
-  return `<div class="cl-ed-task${invalid ? ' is-invalid' : ''}"><input class="cl-ed-label" data-cled="label" data-task="${id}" value="${esc(task.label)}" maxlength="${CL_LIMITS.label}" aria-label="Task" dir="auto" placeholder="${CL_TASK_PLACEHOLDER}"${invalid ? ' aria-invalid="true"' : ''}>` +
-    (invalid ? `<p class="error cl-ed-err" role="alert">${CL_EMPTY_TASK}</p>` : '') +
-    `<div class="cl-ed-grid"><select data-cled="kind" data-task="${id}" aria-label="Kind"><option value="check"${on(task.kind, 'check')}>Tick</option><option value="number"${on(task.kind, 'number')}>Number</option></select>` +
-    `<select data-cled="link" data-task="${id}" aria-label="Link">${links}</select>` +
-    `<label class="cl-ed-mini cl-ed-check"><input type="checkbox" data-cled="required" data-task="${id}"${task.required ? ' checked' : ''}>Required</label></div>${clEditLimits(task)}` +
-    `<div class="cl-type-btns"><button type="button" data-clact="edmove" data-task="${id}" data-dir="-1" aria-label="Move up">↑</button><button type="button" data-clact="edmove" data-task="${id}" data-dir="1" aria-label="Move down">↓</button>` +
-    `<button type="button" class="danger-text" data-clact="eddeltask" data-task="${id}">Remove</button></div></div>`;
-}
-
-function clEditSection(group) {
-  const id = esc(group.section.id);
-  return `<fieldset class="cl-ed-sec"><input class="cl-ed-label" data-cled="secname" data-sec="${id}" value="${esc(group.section.name)}" maxlength="${CL_LIMITS.name}" aria-label="Section name" dir="auto">` +
-    `<div class="cl-type-btns"><button type="button" data-clact="edmove" data-sec="${id}" data-dir="-1" aria-label="Move section up">↑</button><button type="button" data-clact="edmove" data-sec="${id}" data-dir="1" aria-label="Move section down">↓</button>` +
-    `<button type="button" class="danger-text" data-clact="eddelsec" data-sec="${id}">Remove section</button></div>` +
-    group.tasks.map(clEditTask).join('') + `<button type="button" class="ghost" data-clact="edaddtask" data-sec="${id}">+ Add task</button></fieldset>`;
-}
-
 /* Built-ins whose active template is a starter are edited as an unsaved copy; the first Save stores it. */
 function clEditDraftFor(key, card) {
   if (CL.editDraft && CL.editKey === key) return CL.editDraft;
   CL.editKey = key;
   CL.editSection = null;
-  CL.editInvalid = null;
   CL.editDraft = clIsStarterId(card.template.id) ? clDuplicate(card.template, clNewId, clNow()) : clone(card.template);
   return CL.editDraft;
 }
@@ -127,22 +88,7 @@ function clMove(list, id, dir) {
 }
 
 function clEditInput(el) {
-  const draft = CL.editDraft, field = el.dataset.cled;
-  if (!draft) return;
-  if (field === 'name') draft.name = el.value;
-  if (field === 'secname') draft.sections.find(s => s.id === el.dataset.sec).name = el.value;
-  const task = el.dataset.task && draft.tasks.find(t => t.id === el.dataset.task);
-  if (!task) return;
-  if (field === 'label' || field === 'unit' || field === 'kind' || field === 'link') task[field] = el.value;
-  if (field === 'label' && CL.editInvalid === task.id && el.value.trim()) {
-    CL.editInvalid = null;
-    el.removeAttribute('aria-invalid');
-    el.closest('.cl-ed-task').classList.remove('is-invalid');
-    const message = el.closest('.cl-ed-task').querySelector('.cl-ed-err');
-    if (message) message.remove();
-  }
-  if (field === 'required') task.required = el.checked;
-  if (field === 'min' || field === 'max') task[field] = el.value.trim() === '' ? null : Number(el.value.replace(',', '.'));
+  if (CL.editDraft && el.dataset.cled === 'name') CL.editDraft.name = el.value;
 }
 
 function clEditProblem(draft) {
@@ -160,10 +106,8 @@ function clEditSave() {
   if (!clCanSave()) return clSave();
   const unnamed = clOrdered(draft).flatMap(g => g.tasks).find(t => !clStr(t.label, CL_LIMITS.label));
   if (unnamed) {
-    CL.editInvalid = unnamed.id;
-    clRefresh();
-    clFocusTask(unnamed.id);
-    return notify('A task has no name yet. ' + CL_EMPTY_TASK);
+    clTaskOpen({ task: unnamed.id });
+    return clError('This task has no name yet. Type one, or remove the task.');
   }
   const problem = clEditProblem(draft);
   if (problem) return notify(problem);
@@ -197,34 +141,9 @@ function clEditRemove(ds) {
   go('checklists');
 }
 
-function clEditStructure(ds) {
-  const draft = CL.editDraft;
-  if (!draft) return;
-  const action = ds.clact, dir = Number(ds.dir);
-  const full = action === 'edaddsec' ? clLimitProblem(draft, 1, 0) : action === 'edaddtask' ? clLimitProblem(draft, 0, 1) : '';
-  if (full) return notify(full);
-  if (action === 'edaddsec') draft.sections.push({ id: clNewId(), name: 'New section', order: draft.sections.length });
-  const newId = clNewId();
-  if (action === 'edaddtask') draft.tasks.push({ id: newId, sectionId: ds.sec, label: '', kind: 'check', unit: '', min: null, max: null, required: true, order: draft.tasks.length, link: '', sourceId: '' });
-  if (action === 'edaddtask') CL.editSection = ds.sec;
-  if (action === 'eddeltask') draft.tasks = draft.tasks.filter(t => t.id !== ds.task);
-  if (action === 'eddelsec') {
-    draft.sections = draft.sections.filter(s => s.id !== ds.sec);
-    draft.tasks = draft.tasks.filter(t => t.sectionId !== ds.sec);
-  }
-  if (action === 'edmove' && ds.sec) clMove(draft.sections, ds.sec, dir);
-  if (action === 'edmove' && ds.task) {
-    const task = draft.tasks.find(t => t.id === ds.task);
-    clMove(draft.tasks.filter(t => t.sectionId === task.sectionId), ds.task, dir);
-  }
-  clRefresh();
-  if (action === 'edaddtask') clFocusTask(newId);
-}
-
 Object.assign(CL_ACTIONS, {
   settings: clSettingsDialog, cutoff: clSaveCutoff, newlist: clNewListDialog, newlistgo: clNewListCreate,
   edsave: clEditSave, edreset: clEditRemove, eddelete: clEditRemove,
-  edaddsec: clEditStructure, edaddtask: clEditStructure, eddeltask: clEditStructure, eddelsec: clEditStructure, edmove: clEditStructure,
   edcancel: () => {
     CL.editDraft = null;
     go('checklists');
@@ -233,20 +152,6 @@ Object.assign(CL_ACTIONS, {
 
 document.addEventListener('input', e => {
   if (e.target.dataset && e.target.dataset.cled) clEditInput(e.target);
-});
-
-document.addEventListener('change', e => {
-  if (!e.target.dataset || !e.target.dataset.cled) return;
-  clEditInput(e.target);
-  if (e.target.dataset.cled === 'kind') clRefresh();
-});
-
-/* Remembers the section being edited, so library tasks go there by default. */
-document.addEventListener('focusin', e => {
-  const el = e.target.closest && e.target.closest('[data-sec],[data-task]');
-  if (!el || !CL.editDraft) return;
-  const task = el.dataset.task && CL.editDraft.tasks.find(t => t.id === el.dataset.task);
-  CL.editSection = el.dataset.sec || (task && task.sectionId) || CL.editSection;
 });
 
 clInit();
