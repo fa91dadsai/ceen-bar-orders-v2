@@ -3,10 +3,12 @@
    No DOM and no storage here, so every rule can be checked in isolation. */
 const CL_TYPES = ['opening', 'closing', 'handover'];
 const CL_TYPE_NAMES = { opening: 'Opening', closing: 'Closing', handover: 'Handover' };
+/* Built-in types have one active template each; 'custom' templates are checklists of their own. */
+const CL_TEMPLATE_TYPES = [...CL_TYPES, 'custom'];
 const CL_STATES = ['done', 'issue', 'undone', 'resolved'];
 const CL_HANDLED = ['done', 'issue', 'resolved'];
 const CL_LINKS = { stock85: '86/85', order: 'Order', receive: 'Receive', recipes: 'Recipes' };
-const CL_LIMITS = { name: 60, label: 120, note: 200, nextAction: 120, unit: 12, staff: 40, sections: 30, tasks: 150, templates: 30, runs: 5000, entries: 100000 };
+const CL_LIMITS = { customName: 40, name: 60, label: 120, note: 200, nextAction: 120, unit: 12, staff: 40, sections: 30, tasks: 150, templates: 30, runs: 5000, entries: 100000 };
 const CL_DEFAULT_CUTOFF = '06:00';
 const CL_HISTORY_DAYS = 30;
 const CL_TZ = 'Asia/Amman';
@@ -52,19 +54,19 @@ function clBuildStarter(id, type, name, sections) {
 }
 
 const CL_STARTERS = [
-  clBuildStarter('starter-opening', 'opening', 'Opening (starter)', [
+  clBuildStarter('starter-opening', 'opening', 'Opening', [
     ['Bar', ['Check ice well', 'Cut garnishes', 'Fill juices and syrups', 'Stock straws and napkins']],
     ['Equipment', [{ label: 'Fridge temperature', kind: 'number', unit: '°C', min: 1, max: 5 }, 'Glass washer on', 'POS and printer on']],
     ['Stock', [{ label: 'Review 86/85 list', link: 'stock85' }]],
     ['Cleaning', ['Wipe bar top', 'Check bathrooms']]
   ]),
-  clBuildStarter('starter-closing', 'closing', 'Closing (starter)', [
+  clBuildStarter('starter-closing', 'closing', 'Closing', [
     ['Bar', ['Clean tools and stations', 'Label and store open prep', 'Empty ice well']],
     ['Cleaning', ['Floors', 'Mats', 'Bins out']],
     ['Equipment', ['Glass washer off and drained', { label: 'Record faults for the opener', required: false }]],
     ['Stock', [{ label: 'Count low items', link: 'stock85' }, { label: "Submit tomorrow's order", link: 'order' }]]
   ]),
-  clBuildStarter('starter-handover', 'handover', 'Handover (starter)', [
+  clBuildStarter('starter-handover', 'handover', 'Handover', [
     ['Handover', [{ label: 'Shortages reviewed', link: 'stock85' }, 'Unfinished prep noted',
       { label: 'Expected deliveries', link: 'receive' }, 'Open issues reviewed']]
   ])
@@ -87,7 +89,8 @@ function clCleanTask(raw, sectionIds, index) {
     id: raw.id, sectionId: raw.sectionId, label, kind,
     unit: kind === 'number' ? clStr(raw.unit, CL_LIMITS.unit) : '', min: limits.min, max: limits.max,
     required: raw.required !== false, order: Number.isInteger(raw.order) ? raw.order : index,
-    link: Object.prototype.hasOwnProperty.call(CL_LINKS, raw.link) ? raw.link : ''
+    link: Object.prototype.hasOwnProperty.call(CL_LINKS, raw.link) ? raw.link : '',
+    sourceId: clId(raw.sourceId) || ''
   };
 }
 
@@ -105,11 +108,12 @@ function clCleanBody(raw) {
 }
 
 function clCleanTemplate(raw) {
-  if (!clIsPlain(raw) || !clId(raw.id) || !CL_TYPES.includes(raw.type)) return null;
+  if (!clIsPlain(raw) || !clId(raw.id) || !CL_TEMPLATE_TYPES.includes(raw.type)) return null;
   const body = clCleanBody(raw);
-  if (!body.tasks.length) return null;
+  /* A new custom checklist starts empty; built-in copies always have tasks. */
+  if (!body.tasks.length && raw.type !== 'custom') return null;
   return {
-    id: raw.id, type: raw.type, name: clStr(raw.name, CL_LIMITS.name) || CL_TYPE_NAMES[raw.type],
+    id: raw.id, type: raw.type, name: clStr(raw.name, CL_LIMITS.name) || CL_TYPE_NAMES[raw.type] || 'Checklist',
     version: Number.isInteger(raw.version) && raw.version > 0 ? raw.version : 1,
     updatedAt: clIso(raw.updatedAt) || new Date().toISOString(), deletedAt: clIso(raw.deletedAt),
     sections: body.sections, tasks: body.tasks
@@ -130,21 +134,61 @@ function clCleanSettings(raw, templates) {
   };
 }
 
-/* The optional `checklists` block of the main db (templates, settings, PIN). Never throws. */
-function clCleanState(raw) {
-  const src = clIsPlain(raw) ? raw : {}, seen = new Set();
-  /* Live templates first, so deleted ones never push a live one past the limit. */
-  const templates = (Array.isArray(src.templates) ? src.templates : []).slice(0, CL_LIMITS.templates * 4)
+/* The optional `checklists` block of the main db (templates, settings). Never throws. */
+const CL_DELETED_KEEP_MS = 180 * 864e5;
+const CL_RAW_TEMPLATES_MAX = 1000;
+
+/* Built-in copies that are not active are invisible; soft-delete them so they never count or show. */
+function clRetireInactive(templates, active, now) {
+  return templates.map(t => (!t.deletedAt && t.type !== 'custom' && active[t.type] !== t.id ? { ...t, deletedAt: now } : t));
+}
+
+/* Live templates are never dropped. Soft-deleted ones (runs keep their own snapshot) are kept only
+   for 180 days and at most CL_LIMITS.templates of them, newest first. */
+function clPruneDeleted(templates, nowMs) {
+  const live = templates.filter(t => !t.deletedAt);
+  const deleted = templates.filter(t => t.deletedAt && nowMs - Date.parse(t.deletedAt) < CL_DELETED_KEEP_MS)
+    .sort((a, b) => (a.deletedAt < b.deletedAt ? 1 : -1)).slice(0, CL_LIMITS.templates);
+  return [...live, ...deleted];
+}
+
+/* Templates the hub shows (live custom checklists and active built-in copies); the limit counts only these. */
+const clVisibleTemplateCount = state => state.templates.filter(t => !t.deletedAt).length;
+
+/* The optional `checklists` block of the main db (templates, settings). Never throws. */
+function clCleanState(raw, nowMs = Date.now()) {
+  const src = clIsPlain(raw) ? raw : {}, seen = new Set(), now = new Date(nowMs).toISOString();
+  const cleaned = (Array.isArray(src.templates) ? src.templates : []).slice(0, CL_RAW_TEMPLATES_MAX)
     .map(clCleanTemplate)
-    .filter(t => t && !clIsStarterId(t.id) && !seen.has(t.id) && seen.add(t.id))
-    .sort((a, b) => Number(!!a.deletedAt) - Number(!!b.deletedAt))
-    .slice(0, CL_LIMITS.templates);
-  const pin = clIsPlain(src.pin) && /^[0-9a-f]{64}$/.test(src.pin.hash) && /^[0-9a-f]{32}$/.test(src.pin.salt)
-    ? { hash: src.pin.hash, salt: src.pin.salt } : null;
-  return {
-    templates, settings: clCleanSettings(src.settings, templates), pin, deviceId: clId(src.deviceId),
-    orderGuards: clCleanGuards(src.orderGuards, Date.now())
+    .filter(t => t && !clIsStarterId(t.id) && !seen.has(t.id) && seen.add(t.id));
+  const settings = clCleanSettings(src.settings, cleaned);
+  const templates = clPruneDeleted(clRetireInactive(cleaned, settings.active, now), nowMs);
+  /* An old manager `pin` field is ignored and dropped here. */
+  return { templates, settings, deviceId: clId(src.deviceId), orderGuards: clCleanGuards(src.orderGuards, nowMs) };
+}
+
+/* '' when the draft fits the limits, otherwise a message; the editor refuses to save rather than truncate. */
+function clLimitProblem(draft, extraSections = 0, extraTasks = 0) {
+  if (draft.sections.length + extraSections > CL_LIMITS.sections) return `A checklist can have at most ${CL_LIMITS.sections} sections.`;
+  if (draft.tasks.length + extraTasks > CL_LIMITS.tasks) return `A checklist can have at most ${CL_LIMITS.tasks} tasks.`;
+  return '';
+}
+
+/* Keeps the newest runs (with their entries) whose backup still fits in maxBytes.
+   `measure(runs, entries)` returns the serialized backup size; binary search keeps it to ~13 calls. */
+function clFitHistory(runs, entries, maxBytes, measure) {
+  const newest = [...runs].sort((a, b) => (a.businessDate === b.businessDate ? (a.startedAt < b.startedAt ? 1 : -1) : a.businessDate < b.businessDate ? 1 : -1));
+  const pick = n => {
+    const ids = new Set(newest.slice(0, n).map(r => r.id));
+    return { runs: newest.slice(0, n), entries: entries.filter(e => ids.has(e.runId)) };
   };
+  let low = 0, high = newest.length;
+  while (low < high) {
+    const mid = Math.ceil((low + high) / 2), part = pick(mid);
+    if (measure(part.runs, part.entries) <= maxBytes) low = mid;
+    else high = mid - 1;
+  }
+  return { ...pick(low), trimmed: low < newest.length };
 }
 
 /* "Added to order draft" guards keyed runId:taskId. They live in db.checklists so the guard and the
@@ -175,13 +219,13 @@ function clCleanOrderAdds(raw) {
 
 function clCleanRun(raw) {
   if (!clIsPlain(raw) || !clId(raw.id) || !clId(raw.templateId) || !clIsPlain(raw.snapshot)) return null;
-  const type = CL_TYPES.includes(raw.type) ? raw.type : null, startedAt = clIso(raw.startedAt);
+  const type = CL_TEMPLATE_TYPES.includes(raw.type) ? raw.type : null, startedAt = clIso(raw.startedAt);
   const body = clCleanBody(raw.snapshot);
   if (!type || !startedAt || !clValidDate(raw.businessDate) || !body.tasks.length) return null;
   const ackName = clIsPlain(raw.ack) ? clStr(raw.ack.name, CL_LIMITS.staff) : '';
   return {
     id: raw.id, templateId: raw.templateId, templateVersion: Number.isInteger(raw.templateVersion) ? raw.templateVersion : 1,
-    type, snapshot: { name: clStr(raw.snapshot.name, CL_LIMITS.name) || CL_TYPE_NAMES[type], ...body },
+    type, snapshot: { name: clStr(raw.snapshot.name, CL_LIMITS.name) || CL_TYPE_NAMES[type] || 'Checklist', ...body },
     businessDate: raw.businessDate, startedAt, completedAt: clIso(raw.completedAt),
     staffName: clStr(raw.staffName, CL_LIMITS.staff), deviceId: clId(raw.deviceId) || '',
     ack: ackName && clIso(raw.ack.at) ? { name: ackName, at: raw.ack.at } : null,
@@ -250,11 +294,17 @@ function clProgress(run, entries) {
   };
 }
 
+/* "1–5", or "-22 to -18" when a dash would read as a minus sign. */
+function clRangeText(min, max) {
+  const low = min ?? '…', high = max ?? '…';
+  return (min !== null && min < 0) || (max !== null && max < 0) ? `${low} to ${high}` : `${low}–${high}`;
+}
+
 /* Returns a message when a reading is outside the task's limits, otherwise ''. */
 function clRangeProblem(task, value) {
   const tooLow = task.min !== null && value < task.min, tooHigh = task.max !== null && value > task.max;
   if (!tooLow && !tooHigh) return '';
-  const range = task.min !== null && task.max !== null ? `${task.min}–${task.max}` : task.min !== null ? `at least ${task.min}` : `at most ${task.max}`;
+  const range = task.min !== null && task.max !== null ? clRangeText(task.min, task.max) : task.min !== null ? `at least ${task.min}` : `at most ${task.max}`;
   return `Reading ${value}${task.unit ? ' ' + task.unit : ''} is outside ${range}${task.unit ? ' ' + task.unit : ''}.`;
 }
 
@@ -262,7 +312,7 @@ function clRangeProblem(task, value) {
 function clDuplicate(source, newId, now) {
   const sectionMap = new Map(source.sections.map(s => [s.id, newId()]));
   return {
-    id: newId(), type: source.type, name: clStr('Copy of ' + source.name.replace(/ \(starter\)$/, ''), CL_LIMITS.name),
+    id: newId(), type: source.type, name: clStr(source.name.replace(/ \(starter\)$/, ''), CL_LIMITS.name),
     version: 1, updatedAt: now, deletedAt: null,
     sections: source.sections.map(s => ({ ...s, id: sectionMap.get(s.id) })),
     tasks: source.tasks.map(t => ({ ...t, id: newId(), sectionId: sectionMap.get(t.sectionId) }))

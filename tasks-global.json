@@ -1,0 +1,772 @@
+{
+ "status": "draft",
+ "version": 1,
+ "note": "Draft list; to be reviewed by a bar expert.",
+ "groups": [
+  "Bar setup",
+  "Cleaning",
+  "Equipment",
+  "Stock",
+  "Safety & hygiene",
+  "Closing",
+  "Service"
+ ],
+ "tasks": [
+  {
+   "id": "g-bar-fill-ice-well",
+   "group": "Bar setup",
+   "kind": "check",
+   "label": "Fill ice well"
+  },
+  {
+   "id": "g-bar-cut-lemons-and-limes",
+   "group": "Bar setup",
+   "kind": "check",
+   "label": "Cut lemons and limes"
+  },
+  {
+   "id": "g-bar-prepare-orange-and-grapefruit-twists",
+   "group": "Bar setup",
+   "kind": "check",
+   "label": "Prepare orange and grapefruit twists"
+  },
+  {
+   "id": "g-bar-pick-and-wash-mint",
+   "group": "Bar setup",
+   "kind": "check",
+   "label": "Pick and wash mint"
+  },
+  {
+   "id": "g-bar-squeeze-fresh-lemon-juice",
+   "group": "Bar setup",
+   "kind": "check",
+   "label": "Squeeze fresh lemon juice"
+  },
+  {
+   "id": "g-bar-squeeze-fresh-lime-juice",
+   "group": "Bar setup",
+   "kind": "check",
+   "label": "Squeeze fresh lime juice"
+  },
+  {
+   "id": "g-bar-fill-simple-syrup-bottles",
+   "group": "Bar setup",
+   "kind": "check",
+   "label": "Fill simple syrup bottles"
+  },
+  {
+   "id": "g-bar-check-house-syrups-are-labelled-and-dated",
+   "group": "Bar setup",
+   "kind": "check",
+   "label": "Check house syrups are labelled and dated"
+  },
+  {
+   "id": "g-bar-set-up-speed-rails",
+   "group": "Bar setup",
+   "kind": "check",
+   "label": "Set up speed rails"
+  },
+  {
+   "id": "g-bar-polish-and-stock-glassware",
+   "group": "Bar setup",
+   "kind": "check",
+   "label": "Polish and stock glassware"
+  },
+  {
+   "id": "g-bar-stock-straws-napkins-and-picks",
+   "group": "Bar setup",
+   "kind": "check",
+   "label": "Stock straws, napkins and picks"
+  },
+  {
+   "id": "g-bar-set-out-bar-mats-and-towels",
+   "group": "Bar setup",
+   "kind": "check",
+   "label": "Set out bar mats and towels"
+  },
+  {
+   "id": "g-bar-fill-bitters-and-dasher-bottles",
+   "group": "Bar setup",
+   "kind": "check",
+   "label": "Fill bitters and dasher bottles"
+  },
+  {
+   "id": "g-bar-set-up-jiggers-shakers-and-strainers",
+   "group": "Bar setup",
+   "kind": "check",
+   "label": "Set up jiggers, shakers and strainers"
+  },
+  {
+   "id": "g-bar-prepare-batch-cocktails",
+   "group": "Bar setup",
+   "kind": "check",
+   "label": "Prepare batch cocktails"
+  },
+  {
+   "id": "g-bar-chill-coupes-and-martini-glasses",
+   "group": "Bar setup",
+   "kind": "check",
+   "label": "Chill coupes and martini glasses"
+  },
+  {
+   "id": "g-bar-check-soda-gun-lines-and-flavours",
+   "group": "Bar setup",
+   "kind": "check",
+   "label": "Check soda gun lines and flavours"
+  },
+  {
+   "id": "g-cleaning-wipe-bar-top-and-back-bar",
+   "group": "Cleaning",
+   "kind": "check",
+   "label": "Wipe bar top and back bar"
+  },
+  {
+   "id": "g-cleaning-clean-and-sanitise-sinks",
+   "group": "Cleaning",
+   "kind": "check",
+   "label": "Clean and sanitise sinks"
+  },
+  {
+   "id": "g-cleaning-clean-beer-drip-trays",
+   "group": "Cleaning",
+   "kind": "check",
+   "label": "Clean beer drip trays"
+  },
+  {
+   "id": "g-cleaning-wash-rubber-bar-mats",
+   "group": "Cleaning",
+   "kind": "check",
+   "label": "Wash rubber bar mats"
+  },
+  {
+   "id": "g-cleaning-clean-speed-rails",
+   "group": "Cleaning",
+   "kind": "check",
+   "label": "Clean speed rails"
+  },
+  {
+   "id": "g-cleaning-wipe-bottle-shoulders-and-pourers",
+   "group": "Cleaning",
+   "kind": "check",
+   "label": "Wipe bottle shoulders and pourers"
+  },
+  {
+   "id": "g-cleaning-soak-pourers-in-hot-water",
+   "group": "Cleaning",
+   "kind": "check",
+   "label": "Soak pourers in hot water"
+  },
+  {
+   "id": "g-cleaning-clean-soda-gun-nozzle-and-holster",
+   "group": "Cleaning",
+   "kind": "check",
+   "label": "Clean soda gun nozzle and holster"
+  },
+  {
+   "id": "g-cleaning-clean-ice-scoop-and-holder",
+   "group": "Cleaning",
+   "kind": "check",
+   "label": "Clean ice scoop and holder"
+  },
+  {
+   "id": "g-cleaning-wipe-fridge-doors-and-handles",
+   "group": "Cleaning",
+   "kind": "check",
+   "label": "Wipe fridge doors and handles"
+  },
+  {
+   "id": "g-cleaning-clean-coffee-machine-steam-wand",
+   "group": "Cleaning",
+   "kind": "check",
+   "label": "Clean coffee machine steam wand"
+  },
+  {
+   "id": "g-cleaning-sweep-and-mop-behind-the-bar",
+   "group": "Cleaning",
+   "kind": "check",
+   "label": "Sweep and mop behind the bar"
+  },
+  {
+   "id": "g-cleaning-clean-glass-shelves",
+   "group": "Cleaning",
+   "kind": "check",
+   "label": "Clean glass shelves"
+  },
+  {
+   "id": "g-cleaning-check-and-clean-bathrooms",
+   "group": "Cleaning",
+   "kind": "check",
+   "label": "Check and clean bathrooms"
+  },
+  {
+   "id": "g-cleaning-empty-and-clean-bins",
+   "group": "Cleaning",
+   "kind": "check",
+   "label": "Empty and clean bins"
+  },
+  {
+   "id": "g-cleaning-clean-menus-and-table-cards",
+   "group": "Cleaning",
+   "kind": "check",
+   "label": "Clean menus and table cards"
+  },
+  {
+   "id": "g-cleaning-dust-back-bar-display",
+   "group": "Cleaning",
+   "kind": "check",
+   "label": "Dust back-bar display"
+  },
+  {
+   "id": "g-equipment-main-bar-fridge-temperature",
+   "group": "Equipment",
+   "kind": "number",
+   "label": "Main bar fridge temperature",
+   "unit": "°C",
+   "min": 1,
+   "max": 5
+  },
+  {
+   "id": "g-equipment-back-bar-fridge-temperature",
+   "group": "Equipment",
+   "kind": "number",
+   "label": "Back-bar fridge temperature",
+   "unit": "°C",
+   "min": 1,
+   "max": 5
+  },
+  {
+   "id": "g-equipment-beer-cooler-temperature",
+   "group": "Equipment",
+   "kind": "number",
+   "label": "Beer cooler temperature",
+   "unit": "°C",
+   "min": 2,
+   "max": 6
+  },
+  {
+   "id": "g-equipment-wine-fridge-temperature",
+   "group": "Equipment",
+   "kind": "number",
+   "label": "Wine fridge temperature",
+   "unit": "°C",
+   "min": 8,
+   "max": 14
+  },
+  {
+   "id": "g-equipment-freezer-temperature",
+   "group": "Equipment",
+   "kind": "number",
+   "label": "Freezer temperature",
+   "unit": "°C",
+   "min": -22,
+   "max": -18
+  },
+  {
+   "id": "g-equipment-glass-washer-wash-temperature",
+   "group": "Equipment",
+   "kind": "number",
+   "label": "Glass washer wash temperature",
+   "unit": "°C",
+   "min": 55,
+   "max": 65
+  },
+  {
+   "id": "g-equipment-glass-washer-rinse-temperature",
+   "group": "Equipment",
+   "kind": "number",
+   "label": "Glass washer rinse temperature",
+   "unit": "°C",
+   "min": 80,
+   "max": 90
+  },
+  {
+   "id": "g-equipment-ice-machine-bin-level",
+   "group": "Equipment",
+   "kind": "number",
+   "label": "Ice machine bin level",
+   "unit": "%",
+   "min": 50,
+   "max": 100
+  },
+  {
+   "id": "g-equipment-co2-cylinder-pressure",
+   "group": "Equipment",
+   "kind": "number",
+   "label": "CO2 cylinder pressure",
+   "unit": "bar",
+   "min": 2,
+   "max": 4
+  },
+  {
+   "id": "g-equipment-glass-washer-on-and-detergent-filled",
+   "group": "Equipment",
+   "kind": "check",
+   "label": "Glass washer on and detergent filled"
+  },
+  {
+   "id": "g-equipment-check-glass-washer-rinse-aid",
+   "group": "Equipment",
+   "kind": "check",
+   "label": "Check glass washer rinse aid"
+  },
+  {
+   "id": "g-equipment-ice-machine-running-and-clean",
+   "group": "Equipment",
+   "kind": "check",
+   "label": "Ice machine running and clean"
+  },
+  {
+   "id": "g-equipment-coffee-machine-on-and-purged",
+   "group": "Equipment",
+   "kind": "check",
+   "label": "Coffee machine on and purged"
+  },
+  {
+   "id": "g-equipment-pos-terminals-on-and-logged-in",
+   "group": "Equipment",
+   "kind": "check",
+   "label": "POS terminals on and logged in"
+  },
+  {
+   "id": "g-equipment-receipt-and-kitchen-printers-have-paper",
+   "group": "Equipment",
+   "kind": "check",
+   "label": "Receipt and kitchen printers have paper"
+  },
+  {
+   "id": "g-equipment-card-machines-charged-and-working",
+   "group": "Equipment",
+   "kind": "check",
+   "label": "Card machines charged and working"
+  },
+  {
+   "id": "g-equipment-music-and-lighting-set",
+   "group": "Equipment",
+   "kind": "check",
+   "label": "Music and lighting set"
+  },
+  {
+   "id": "g-stock-review-86-85-list",
+   "group": "Stock",
+   "kind": "check",
+   "label": "Review 86/85 list",
+   "link": "stock85"
+  },
+  {
+   "id": "g-stock-count-low-spirits",
+   "group": "Stock",
+   "kind": "check",
+   "label": "Count low spirits",
+   "link": "stock85"
+  },
+  {
+   "id": "g-stock-count-beer-and-mixers",
+   "group": "Stock",
+   "kind": "check",
+   "label": "Count beer and mixers",
+   "link": "stock85"
+  },
+  {
+   "id": "g-stock-check-wine-by-the-glass-levels",
+   "group": "Stock",
+   "kind": "check",
+   "label": "Check wine by the glass levels",
+   "link": "stock85"
+  },
+  {
+   "id": "g-stock-restock-fridges-from-storeroom",
+   "group": "Stock",
+   "kind": "check",
+   "label": "Restock fridges from storeroom"
+  },
+  {
+   "id": "g-stock-restock-back-bar-spirits",
+   "group": "Stock",
+   "kind": "check",
+   "label": "Restock back bar spirits"
+  },
+  {
+   "id": "g-stock-rotate-stock-first-in-first-out",
+   "group": "Stock",
+   "kind": "check",
+   "label": "Rotate stock (first in, first out)"
+  },
+  {
+   "id": "g-stock-check-fruit-and-garnish-stock",
+   "group": "Stock",
+   "kind": "check",
+   "label": "Check fruit and garnish stock"
+  },
+  {
+   "id": "g-stock-check-open-juice-and-dairy-dates",
+   "group": "Stock",
+   "kind": "check",
+   "label": "Check open juice and dairy dates"
+  },
+  {
+   "id": "g-stock-prepare-order-draft",
+   "group": "Stock",
+   "kind": "check",
+   "label": "Prepare order draft",
+   "link": "order"
+  },
+  {
+   "id": "g-stock-submit-tomorrow-s-order",
+   "group": "Stock",
+   "kind": "check",
+   "label": "Submit tomorrow's order",
+   "link": "order"
+  },
+  {
+   "id": "g-stock-receive-and-check-deliveries",
+   "group": "Stock",
+   "kind": "check",
+   "label": "Receive and check deliveries",
+   "link": "receive"
+  },
+  {
+   "id": "g-stock-check-expected-deliveries",
+   "group": "Stock",
+   "kind": "check",
+   "label": "Check expected deliveries",
+   "link": "receive"
+  },
+  {
+   "id": "g-stock-record-breakages-and-spills",
+   "group": "Stock",
+   "kind": "check",
+   "label": "Record breakages and spills"
+  },
+  {
+   "id": "g-stock-record-staff-drinks-and-comps",
+   "group": "Stock",
+   "kind": "check",
+   "label": "Record staff drinks and comps"
+  },
+  {
+   "id": "g-stock-check-recipe-specs-for-new-drinks",
+   "group": "Stock",
+   "kind": "check",
+   "label": "Check recipe specs for new drinks",
+   "link": "recipes"
+  },
+  {
+   "id": "g-stock-check-keg-levels-and-spare-kegs",
+   "group": "Stock",
+   "kind": "check",
+   "label": "Check keg levels and spare kegs"
+  },
+  {
+   "id": "g-safety-wash-hands-and-wear-clean-uniform",
+   "group": "Safety & hygiene",
+   "kind": "check",
+   "label": "Wash hands and wear clean uniform"
+  },
+  {
+   "id": "g-safety-check-first-aid-kit-is-stocked",
+   "group": "Safety & hygiene",
+   "kind": "check",
+   "label": "Check first aid kit is stocked"
+  },
+  {
+   "id": "g-safety-check-fire-exits-are-clear",
+   "group": "Safety & hygiene",
+   "kind": "check",
+   "label": "Check fire exits are clear"
+  },
+  {
+   "id": "g-safety-fire-extinguisher-in-place-and-in-date",
+   "group": "Safety & hygiene",
+   "kind": "check",
+   "label": "Fire extinguisher in place and in date"
+  },
+  {
+   "id": "g-safety-sanitiser-and-soap-dispensers-filled",
+   "group": "Safety & hygiene",
+   "kind": "check",
+   "label": "Sanitiser and soap dispensers filled"
+  },
+  {
+   "id": "g-safety-paper-towels-stocked-at-hand-sinks",
+   "group": "Safety & hygiene",
+   "kind": "check",
+   "label": "Paper towels stocked at hand sinks"
+  },
+  {
+   "id": "g-safety-allergen-information-up-to-date",
+   "group": "Safety & hygiene",
+   "kind": "check",
+   "label": "Allergen information up to date"
+  },
+  {
+   "id": "g-safety-check-id-policy-sign-is-visible",
+   "group": "Safety & hygiene",
+   "kind": "check",
+   "label": "Check ID policy sign is visible"
+  },
+  {
+   "id": "g-safety-broken-glass-kit-ready",
+   "group": "Safety & hygiene",
+   "kind": "check",
+   "label": "Broken glass kit ready"
+  },
+  {
+   "id": "g-safety-wet-floor-sign-available",
+   "group": "Safety & hygiene",
+   "kind": "check",
+   "label": "Wet floor sign available"
+  },
+  {
+   "id": "g-safety-cover-open-containers-and-garnish-trays",
+   "group": "Safety & hygiene",
+   "kind": "check",
+   "label": "Cover open containers and garnish trays"
+  },
+  {
+   "id": "g-safety-label-prepped-food-with-dates",
+   "group": "Safety & hygiene",
+   "kind": "check",
+   "label": "Label prepped food with dates"
+  },
+  {
+   "id": "g-safety-discard-expired-garnishes-and-juices",
+   "group": "Safety & hygiene",
+   "kind": "check",
+   "label": "Discard expired garnishes and juices"
+  },
+  {
+   "id": "g-safety-check-pest-control-traps",
+   "group": "Safety & hygiene",
+   "kind": "check",
+   "label": "Check pest control traps"
+  },
+  {
+   "id": "g-safety-check-cleaning-chemicals-are-stored-safely",
+   "group": "Safety & hygiene",
+   "kind": "check",
+   "label": "Check cleaning chemicals are stored safely"
+  },
+  {
+   "id": "g-safety-report-any-injuries-in-the-log",
+   "group": "Safety & hygiene",
+   "kind": "check",
+   "label": "Report any injuries in the log"
+  },
+  {
+   "id": "g-closing-empty-and-clean-ice-well",
+   "group": "Closing",
+   "kind": "check",
+   "label": "Empty and clean ice well"
+  },
+  {
+   "id": "g-closing-cover-or-store-garnishes",
+   "group": "Closing",
+   "kind": "check",
+   "label": "Cover or store garnishes"
+  },
+  {
+   "id": "g-closing-label-and-store-open-prep",
+   "group": "Closing",
+   "kind": "check",
+   "label": "Label and store open prep"
+  },
+  {
+   "id": "g-closing-cap-and-store-open-mixers",
+   "group": "Closing",
+   "kind": "check",
+   "label": "Cap and store open mixers"
+  },
+  {
+   "id": "g-closing-turn-off-glass-washer-and-drain",
+   "group": "Closing",
+   "kind": "check",
+   "label": "Turn off glass washer and drain"
+  },
+  {
+   "id": "g-closing-turn-off-coffee-machine-and-clean",
+   "group": "Closing",
+   "kind": "check",
+   "label": "Turn off coffee machine and clean"
+  },
+  {
+   "id": "g-closing-clean-beer-lines-weekly",
+   "group": "Closing",
+   "kind": "check",
+   "label": "Clean beer lines (weekly)"
+  },
+  {
+   "id": "g-closing-lock-spirits-and-stock-cupboards",
+   "group": "Closing",
+   "kind": "check",
+   "label": "Lock spirits and stock cupboards"
+  },
+  {
+   "id": "g-closing-count-and-close-cash-drawer",
+   "group": "Closing",
+   "kind": "check",
+   "label": "Count and close cash drawer"
+  },
+  {
+   "id": "g-closing-run-end-of-day-pos-report",
+   "group": "Closing",
+   "kind": "check",
+   "label": "Run end-of-day POS report"
+  },
+  {
+   "id": "g-closing-take-bins-out",
+   "group": "Closing",
+   "kind": "check",
+   "label": "Take bins out"
+  },
+  {
+   "id": "g-closing-floors-swept-and-mopped",
+   "group": "Closing",
+   "kind": "check",
+   "label": "Floors swept and mopped"
+  },
+  {
+   "id": "g-closing-turn-off-music-lights-and-screens",
+   "group": "Closing",
+   "kind": "check",
+   "label": "Turn off music, lights and screens"
+  },
+  {
+   "id": "g-closing-record-faults-for-the-opener",
+   "group": "Closing",
+   "kind": "check",
+   "label": "Record faults for the opener"
+  },
+  {
+   "id": "g-closing-leave-handover-notes",
+   "group": "Closing",
+   "kind": "check",
+   "label": "Leave handover notes"
+  },
+  {
+   "id": "g-closing-check-doors-and-windows-are-locked",
+   "group": "Closing",
+   "kind": "check",
+   "label": "Check doors and windows are locked"
+  },
+  {
+   "id": "g-closing-set-the-alarm",
+   "group": "Closing",
+   "kind": "check",
+   "label": "Set the alarm"
+  },
+  {
+   "id": "g-service-brief-team-on-specials-and-86-items",
+   "group": "Service",
+   "kind": "check",
+   "label": "Brief team on specials and 86 items"
+  },
+  {
+   "id": "g-service-check-reservations-and-large-tables",
+   "group": "Service",
+   "kind": "check",
+   "label": "Check reservations and large tables"
+  },
+  {
+   "id": "g-service-check-tables-are-set-and-clean",
+   "group": "Service",
+   "kind": "check",
+   "label": "Check tables are set and clean"
+  },
+  {
+   "id": "g-service-water-stations-filled",
+   "group": "Service",
+   "kind": "check",
+   "label": "Water stations filled"
+  },
+  {
+   "id": "g-service-check-menus-are-clean-and-complete",
+   "group": "Service",
+   "kind": "check",
+   "label": "Check menus are clean and complete"
+  },
+  {
+   "id": "g-service-taste-check-batch-cocktails",
+   "group": "Service",
+   "kind": "check",
+   "label": "Taste-check batch cocktails"
+  },
+  {
+   "id": "g-service-check-happy-hour-prices-in-pos",
+   "group": "Service",
+   "kind": "check",
+   "label": "Check happy hour prices in POS"
+  },
+  {
+   "id": "g-service-assign-sections-and-breaks",
+   "group": "Service",
+   "kind": "check",
+   "label": "Assign sections and breaks"
+  },
+  {
+   "id": "g-service-check-background-music-volume",
+   "group": "Service",
+   "kind": "check",
+   "label": "Check background music volume"
+  },
+  {
+   "id": "g-service-check-outside-area-is-clean-and-set",
+   "group": "Service",
+   "kind": "check",
+   "label": "Check outside area is clean and set"
+  },
+  {
+   "id": "g-service-toilets-checked-during-service",
+   "group": "Service",
+   "kind": "check",
+   "label": "Toilets checked during service"
+  },
+  {
+   "id": "g-service-clear-and-reset-tables-between-guests",
+   "group": "Service",
+   "kind": "check",
+   "label": "Clear and reset tables between guests"
+  },
+  {
+   "id": "g-service-collect-glassware-from-the-floor",
+   "group": "Service",
+   "kind": "check",
+   "label": "Collect glassware from the floor"
+  },
+  {
+   "id": "g-service-check-guest-feedback-and-complaints",
+   "group": "Service",
+   "kind": "check",
+   "label": "Check guest feedback and complaints"
+  },
+  {
+   "id": "g-service-note-unfinished-tasks-for-next-shift",
+   "group": "Service",
+   "kind": "check",
+   "label": "Note unfinished tasks for next shift"
+  },
+  {
+   "id": "g-service-check-ice-and-glass-supply-mid-shift",
+   "group": "Service",
+   "kind": "check",
+   "label": "Check ice and glass supply mid-shift"
+  },
+  {
+   "id": "g-service-refill-garnish-trays-mid-shift",
+   "group": "Service",
+   "kind": "check",
+   "label": "Refill garnish trays mid-shift"
+  },
+  {
+   "id": "g-service-keep-bar-top-clear-between-rounds",
+   "group": "Service",
+   "kind": "check",
+   "label": "Keep bar top clear between rounds"
+  },
+  {
+   "id": "g-service-call-last-orders-on-time",
+   "group": "Service",
+   "kind": "check",
+   "label": "Call last orders on time"
+  }
+ ]
+}

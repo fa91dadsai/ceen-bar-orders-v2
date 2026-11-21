@@ -23,7 +23,7 @@ function clIssueList(issues, limit) {
   if (!issues.length) return '<p class="av-empty">No open issues.</p>';
   const rows = issues.slice(0, limit).map(({ run, task, entry }) => {
     const next = entry.nextAction ? ' · Next: ' + entry.nextAction : '';
-    const meta = `${CL_TYPE_NAMES[run.type]} ${clDateText(run.businessDate)} · ${entry.byName}`;
+    const meta = `${clRunTitle(run)} ${clDateText(run.businessDate)} · ${entry.byName}`;
     return `<div class="cl-issue"><div class="cl-issue-txt"><b>${esc(task.label)}</b><small>${esc(entry.note + next)}</small><small>${esc(meta)}</small></div>` +
       `<button type="button" data-clact="resolve" data-run="${esc(run.id)}" data-task="${esc(task.id)}">Resolve</button></div>`;
   }).join('');
@@ -39,14 +39,15 @@ function clSuggestedType() {
 }
 
 function clHomeHeadline() {
-  const open = clOpenRunsToday()[0];
+  /* Custom checklists stay off Home; only their open issues show there. */
+  const open = clOpenRunsToday().find(r => CL_TYPES.includes(r.type));
   if (open) {
     const p = clRunProgress(open), next = p.next ? ' · next: ' + p.next.label : ' · ready to finish';
     return { title: `${CL_TYPE_NAMES[open.type]} ${p.done}/${p.total}${next}`, button: `<button class="primary" data-go="checklistsrun/${esc(open.id)}">Continue</button>` };
   }
   const type = clSuggestedType();
   if (!type) return { title: 'Checklists started today', button: '' };
-  return { title: `Start ${type} checklist`, button: `<button class="primary" data-clact="start" data-type="${type}">Start</button>` };
+  return { title: `Start ${type} checklist`, button: `<button class="primary" data-clact="start" data-card="${type}">Start</button>` };
 }
 
 function clHomeCard() {
@@ -58,8 +59,10 @@ function clHomeCard() {
     (issues.length ? clIssueList(issues, 2) : '') + '</section>';
 }
 
-function clTypeStatus(type) {
-  const run = clTodayRun(type), start = `<button type="button" class="primary" data-clact="start" data-type="${type}">Start</button>`;
+function clCardStatus(card) {
+  const run = clCardTodayRun(card), key = esc(card.key);
+  const start = `<button type="button" class="primary" data-clact="start" data-card="${key}">Start</button>`;
+  if (!card.template.tasks.length) return { status: 'No tasks yet — tap Edit to add some', buttons: '' };
   if (!run) return { status: 'Not started today', buttons: start };
   const p = clRunProgress(run), view = `<button type="button" data-go="checklistsrun/${esc(run.id)}">${run.completedAt ? 'View' : 'Continue'}</button>`;
   if (!run.completedAt) return { status: `In progress ${p.done}/${p.total} · ${run.staffName}`, buttons: view };
@@ -67,10 +70,11 @@ function clTypeStatus(type) {
   return { status: `Finished ${clTime(run.completedAt)} by ${run.staffName}${ack}`, buttons: view + start.replace('>Start<', '>Start again<') };
 }
 
-function clTypeCard(type) {
-  const s = clTypeStatus(type), template = clActiveTemplate(type);
-  return `<article class="cl-type"><div><b>${CL_TYPE_NAMES[type]}</b><small>${esc(s.status)}</small><small>${esc(template.name)} · v${template.version}</small></div>` +
-    `<div class="cl-type-btns">${s.buttons}</div></article>`;
+function clTypeCard(card) {
+  const s = clCardStatus(card), template = card.template;
+  const kind = clIsStarterId(template.id) ? 'Default tasks' : `${card.type === 'custom' ? 'Your checklist' : 'Your version'} · v${template.version}`;
+  return `<article class="cl-type"><div><b>${esc(card.title)}</b><small>${esc(s.status)}</small><small>${esc(kind)}</small></div>` +
+    `<div class="cl-type-btns">${s.buttons}<button type="button" data-go="checklistsedit/${esc(card.key)}">Edit</button></div></article>`;
 }
 
 function clPendingAcks() {
@@ -92,9 +96,9 @@ function clAckSection() {
 function clHubPage() {
   const issues = clOpenIssues();
   return `${rcvBar('home', 'Checklists', 'Business day ' + clDateText(clToday()))}${clBanner()}` +
-    `<div class="cl-types">${CL_TYPES.map(clTypeCard).join('')}</div>${clAckSection()}` +
+    `<div class="cl-types">${clCards().map(clTypeCard).join('')}<button type="button" class="ghost cl-more" data-clact="newlist">+ New checklist</button></div>${clAckSection()}` +
     `<h2 class="home-h">Open issues${issues.length ? ' · ' + issues.length : ''}</h2>${clIssueList(issues, 50)}` +
-    '<div class="toolbar-row"><button type="button" data-go="checklistshistory">History (30 days)</button><button type="button" data-clact="manage">Manage templates</button></div>';
+    '<div class="toolbar-row"><button type="button" data-go="checklistshistory">History (30 days)</button><button type="button" data-clact="settings">Settings</button></div>';
 }
 
 function clRowDetail(task, st) {
@@ -102,7 +106,7 @@ function clRowDetail(task, st) {
   if (task.kind !== 'number') return '';
   const value = st && st.last && st.last.value !== null && CL_HANDLED.includes(st.state) ? st.last.value : null;
   if (value !== null) return `Reading: ${value}${task.unit ? ' ' + task.unit : ''}`;
-  const range = task.min !== null || task.max !== null ? ` (${task.min ?? '…'}–${task.max ?? '…'}${task.unit ? ' ' + task.unit : ''})` : '';
+  const range = task.min !== null || task.max !== null ? ` (${clRangeText(task.min, task.max)}${task.unit ? ' ' + task.unit : ''})` : '';
   return 'Tap to enter reading' + range;
 }
 
@@ -140,7 +144,7 @@ function clRunPage(id) {
   const sub = `${run.staffName} · ${clDateText(run.businessDate)} · ${p.done}/${p.total}`;
   const bar = `<div class="cl-bar" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="${p.total}" aria-valuenow="${p.done}"><span style="width:${p.total ? Math.round(p.done / p.total * 100) : 0}%"></span></div>`;
   const next = live && p.next ? `<div class="cl-next"><small>Next task</small>${clRow(run, p.next, p, live)}</div>` : '';
-  return `${rcvBar('checklists', `${CL_TYPE_NAMES[run.type]} checklist`, sub)}${clBanner()}${bar}${clRunStatus(run, p)}${next}` +
+  return `${rcvBar('checklists', CL_TYPE_NAMES[run.type] ? `${CL_TYPE_NAMES[run.type]} checklist` : run.snapshot.name, sub)}${clBanner()}${bar}${clRunStatus(run, p)}${next}` +
     p.groups.map(g => clSection(run, g, p, live)).join('');
 }
 
@@ -148,7 +152,7 @@ function clHistoryRow(run) {
   const p = clRunProgress(run), issues = p.openIssues.length ? ' · ' + clPlural(p.openIssues.length, 'open issue') : '';
   const state = run.completedAt ? 'Finished ' + clTime(run.completedAt) : 'Not finished';
   const ack = run.type === 'handover' && run.ack ? ' · read by ' + run.ack.name : '';
-  return `<button type="button" class="cl-hist" data-go="checklistsrun/${esc(run.id)}"><b>${CL_TYPE_NAMES[run.type]}</b>` +
+  return `<button type="button" class="cl-hist" data-go="checklistsrun/${esc(run.id)}"><b>${esc(clRunTitle(run))}</b>` +
     `<small>${esc(`${run.staffName} · ${p.done}/${p.total} · ${state}${issues}${ack}`)}</small></button>`;
 }
 
@@ -172,7 +176,6 @@ function clRender(page, id) {
   if (!CL.ready) return '<div class="empty"><p>Loading checklists…</p></div>';
   if (page === 'checklistsrun') return clRunPage(id);
   if (page === 'checklistshistory') return clHistoryPage();
-  if (page === 'checklistsmanage') return clManagePage();
   if (page === 'checklistsedit') return clEditPage(id);
   return clHubPage();
 }

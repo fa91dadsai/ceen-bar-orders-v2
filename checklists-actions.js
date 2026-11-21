@@ -40,12 +40,12 @@ function clKnownStaff() {
   return [...new Set(names.filter(Boolean))].slice(0, 6);
 }
 
-function clNameDialog(type) {
+function clNameDialog(card) {
   const preset = clState().settings.lastStaff || cleanName(db.preferences.preparerName);
   const chips = clKnownStaff().map(n => `<button type="button" class="tf-chip" data-clact="staffpick" data-name="${esc(n)}">${esc(n)}</button>`).join('');
-  clDialog(`Start ${type} checklist`,
+  clDialog(`Start ${card.type === 'custom' ? card.title : card.type + ' checklist'}`,
     clField('clStaff', 'Your name', `<input id="clStaff" maxlength="40" autocomplete="off" dir="auto" value="${esc(preset)}">`) + (chips ? `<div class="cl-chips">${chips}</div>` : ''),
-    `${clCancel}<button type="button" class="primary" data-clact="startgo" data-type="${type}">Start</button>`);
+    `${clCancel}<button type="button" class="primary" data-clact="startgo" data-card="${esc(card.key)}">Start</button>`);
 }
 
 function clIssueDialog(run, task) {
@@ -65,7 +65,7 @@ function clIssueView(run, task, issue) {
 
 function clNumberDialog(run, task) {
   const st = clRunProgress(run).states.get(task.id), last = st && st.last && st.last.value !== null ? st.last.value : '';
-  const range = task.min !== null || task.max !== null ? `<p class="hint">Allowed: ${task.min ?? '…'}–${task.max ?? '…'} ${esc(task.unit)}</p>` : '';
+  const range = task.min !== null || task.max !== null ? `<p class="hint">Allowed: ${clRangeText(task.min, task.max)} ${esc(task.unit)}</p>` : '';
   const ids = `data-run="${esc(run.id)}" data-task="${esc(task.id)}"`;
   const clear = st && CL_HANDLED.includes(st.state) ? `<button type="button" data-clact="numclear" ${ids}>Clear</button>` : clCancel;
   clDialog(task.label, clField('clNum', 'Reading' + (task.unit ? ' (' + esc(task.unit) + ')' : ''),
@@ -223,15 +223,18 @@ function clResolve(ds) {
 }
 
 function clStart(ds) {
-  const open = clOpenRunsToday().find(r => r.type === ds.type);
+  const card = clCardByKey(ds.card);
+  if (!card || !card.template.tasks.length) return;
+  const open = clOpenRunsToday().find(r => clRunOfCard(r, card));
   if (open) return go('checklistsrun/' + open.id);
-  clNameDialog(ds.type);
+  clNameDialog(card);
 }
 
 function clStartGo(ds) {
-  const name = cleanName($('clStaff').value);
+  const name = cleanName($('clStaff').value), card = clCardByKey(ds.card);
   if (!name) return clError('Enter your name.');
-  const run = clStartRun(ds.type, name);
+  if (!card) return clError('This checklist no longer exists.');
+  const run = clStartRun(card.template, name);
   clCloseDialog();
   go('checklistsrun/' + run.id);
 }

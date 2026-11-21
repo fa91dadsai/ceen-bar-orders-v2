@@ -60,13 +60,36 @@
 .cl-addrow{display:grid;grid-template-columns:minmax(0,80px) minmax(0,1fr);gap:8px}
 .cl-addrow input{min-height:48px;text-align:center;box-sizing:border-box;width:100%}
 #clDialog textarea,#clDialog input:not([type=checkbox]){width:100%;box-sizing:border-box}
-.cl-ed-sec{border:1px solid var(--line);border-radius:16px;background:var(--paper);padding:12px;margin:0 0 12px;min-width:0}
-.cl-ed-label{width:100%;box-sizing:border-box;min-height:44px;font-weight:600}
-.cl-ed-sec>.cl-type-btns{margin:8px 0}
-.cl-ed-task{border-top:1px solid var(--line);padding:10px 0;display:grid;gap:8px;min-width:0}
 .cl-ed-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
 .cl-ed-grid select,.cl-ed-grid input{width:100%;min-width:0;box-sizing:border-box;min-height:44px}
 .cl-ed-mini{display:flex;flex-direction:column;gap:2px;font-size:11px;color:var(--muted);min-width:0}
-.cl-ed-check{flex-direction:row;align-items:center;gap:6px;font-size:13px;color:var(--ink)}
-.cl-ed-check input{width:22px;height:22px;min-height:0}
 @media (max-width:360px){.cl-ed-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cl-type-btns button{padding:8px 10px}}
+.cl-ed-note{margin:0 0 12px;color:var(--muted);font-size:13px}
+.cl-lib-list{margin-top:4px}
+.cl-lib-grp>summary{position:sticky;top:0;background:var(--paper);z-index:1}
+.cl-lib-row{flex-direction:row;align-items:center;gap:12px;margin:0;border:0;border-top:1px solid var(--line);border-radius:0;background:var(--clear);color:var(--ink)}
+.cl-lib-row:disabled{opacity:.75}
+.cl-lib-row.is-done .cl-box{background:var(--action);border-color:var(--action)}
+.cl-lib-row:not(.is-done) .cl-box{color:var(--green)}
+.cl-limit{color:var(--warn);font-weight:600}
+.cl-ed-sec{border:1px solid var(--line);border-radius:16px;background:var(--paper);margin:0 0 12px;overflow:hidden;min-width:0}
+.cl-ed-sechead{display:flex;align-items:center;gap:8px;min-height:48px;padding:4px 4px 4px 14px;border-bottom:1px solid var(--line);background:var(--raised)}
+.cl-ed-sechead b{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cl-ed-sechead>span{flex:none;color:var(--muted);font-size:13px}
+.cl-ed-row{display:flex;align-items:center;min-width:0;border-bottom:1px solid var(--line)}
+.cl-ed-main{flex:1;min-width:0;display:flex;align-items:center;gap:8px;min-height:48px;padding:6px 4px 6px 14px;border:0;border-radius:0;background:var(--clear);color:var(--ink);text-align:left}
+.cl-ed-name{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:15px}
+.cl-ed-hints{flex:none;display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px}
+.cl-ed-dot{width:8px;height:8px;border-radius:50%;background:var(--gold)}
+.cl-ed-linkic{display:flex}
+.cl-ed-linkic svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.cl-ed-pen{flex:none;display:grid;place-items:center;width:44px;height:44px;min-height:44px;margin-right:4px;padding:0;border:0;border-radius:10px;background:var(--clear);color:var(--green)}
+.cl-ed-pen svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.cl-ed-add{display:block;width:calc(100% - 24px);min-height:44px;margin:10px 12px 12px}
+.cl-ed-grid2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.cl-ed-grid2 .field{margin:0}
+.cl-ed-toggle{display:flex;align-items:center;gap:10px;min-height:44px;margin-top:8px;font-size:14px}
+.cl-ed-toggle input{width:22px;height:22px;min-height:0;accent-color:var(--action)}
+.cl-ed-moves{margin-top:14px}
+#clDialog select{width:100%;box-sizing:border-box;min-height:44px}
+.cl-ed-mini input{color:var(--ink);font-size:15px}
